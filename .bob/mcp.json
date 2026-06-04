@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "ce-bob-tools": {
+      "command": "/Users/mat/dev/ce-bob/ce-bob-tools-mcp-server/venv/bin/python",
+      "args": ["/Users/mat/dev/ce-bob/ce-bob-tools-mcp-server/ce_bob_tools_server.py"],
+      "env": {
+        "CE_BOB_STORAGE_TYPE": "sqlite",
+        "CE_BOB_SQLITE_PATH": "/Users/mat/dev/ce-bob/ce-bob-tools-mcp-server/ce_bob_tools.db",
+        "CE_BOB_MEMORY_MCP_ENABLED": "true",
+        "CE_BOB_MONDAY_MCP_ENABLED": "true",
+        "CE_BOB_LOG_LEVEL": "INFO",
+        "MCP_TRANSPORT": "stdio"
+      },
+      "alwaysAllow": [
+        "assess_complexity",
+        "classify_task",
+        "estimate_task",
+        "format_summary",
+        "generate_mistake_summary",
+        "get_mistakes",
+        "identify_patterns",
+        "log_mistake",
+        "render_mermaid_html",
+        "render_mermaid_png",
+        "retrieve_strategy",
+        "update_variance",
+        "update_mistake_retry",
+        "update_mistake_resolution",
+        "store_strategy",
+        "store_pattern",
+        "store_mistake_summary",
+        "store_estimate",
+        "store_actual_cost",
+        "search_similar_tasks",
+        "list_tools"
+      ]
+    }
+  }
+}

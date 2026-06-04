@@ -1,64 +1,49 @@
 graph TB
     subgraph "Digital Mao - Container View"
         subgraph "Client Layer"
-            WebApp["⚛️ React Web App<br/>(TypeScript)<br/><br/>Game UI, chat,<br/>rule management"]
+            WebApp["⚛️ React Web App<br/>(TypeScript)<br/><br/>Game UI, chat interface,<br/>rule proposal forms"]
         end
         
-        subgraph "API Layer"
-            GameAPI["🎮 Game Management API<br/>(Node.js/Express)<br/><br/>Game CRUD, player actions,<br/>game state management"]
+        subgraph "Application Layer"
+            GameServer["🎮 Game Server<br/>(Node.js/Express + Socket.io)<br/><br/>• REST APIs (Game, Rule Management)<br/>• WebSocket server (real-time events)<br/>• Message Log Manager<br/>• Event Queue<br/>• Dynamic Rules Engine"]
             
-            RuleAPI["📜 Rule Management API<br/>(Node.js/Express)<br/><br/>Rule proposals, compilation,<br/>activation, enforcement stats"]
-            
-            JudgeAPI["⚖️ LLM Judge API<br/>(Python/FastAPI)<br/><br/>Rule compilation,<br/>action evaluation,<br/>penalty decisions"]
-        end
-        
-        subgraph "Real-time Layer"
-            WSServer["🔌 WebSocket Server<br/>(Socket.io)<br/><br/>Real-time game events,<br/>chat, rule updates"]
+            LLMJudge["⚖️ LLM Judge Service<br/>(Python/FastAPI)<br/><br/>• Rule Compiler (NL → executable)<br/>• Action Evaluator<br/>• Penalty Decision Engine<br/>• Context Builder"]
         end
         
         subgraph "Data Layer"
-            GameDB[("🗄️ Game Database<br/>(PostgreSQL)<br/><br/>Games, players,<br/>actions, history")]
+            GameDB[("🗄️ Game State DB<br/>(PostgreSQL)<br/><br/>Transactional storage:<br/>• Games, players, cards<br/>• Actions, penalties<br/>• Chat messages<br/>• Active rules")]
             
-            RuleDB[("📚 Rule Database<br/>(PostgreSQL)<br/><br/>Rules, compiled rules,<br/>enforcement cases")]
+            KnowledgeGraph[("🧠 Knowledge Graph<br/>(Neo4j)<br/><br/>LLM Judge context:<br/>• Enforcement cases<br/>• Precedents<br/>• Rule dependencies<br/>• Learning patterns")]
             
-            Cache[("⚡ Redis Cache<br/><br/>Active games,<br/>player sessions,<br/>real-time state")]
+            Cache[("⚡ Redis<br/><br/>• Event queue<br/>• Active game sessions<br/>• WebSocket connections")]
         end
     end
     
     subgraph "External Services"
-        LLM["🤖 LLM Service<br/>(OpenAI/Anthropic)"]
-        Auth["🔐 Auth Service"]
+        LLM["🤖 LLM API<br/>(OpenAI GPT-4 or<br/>Anthropic Claude)<br/><br/>Natural language<br/>understanding"]
+        Auth["🔐 Auth Service<br/>(OAuth 2.0)"]
     end
     
-    WebApp -->|"REST API<br/>[HTTPS/JSON]"| GameAPI
-    WebApp -->|"REST API<br/>[HTTPS/JSON]"| RuleAPI
-    WebApp -->|"WebSocket<br/>[WSS]"| WSServer
+    %% Client connections
+    WebApp -->|"REST API<br/>[HTTPS/JSON]<br/>Game & Rule Management"| GameServer
+    WebApp -->|"WebSocket<br/>[WSS]<br/>Real-time events & chat"| GameServer
     
-    GameAPI -->|"Reads/Writes"| GameDB
-    GameAPI -->|"Caches state"| Cache
-    GameAPI -->|"Publishes events"| WSServer
+    %% Game Server connections
+    GameServer -->|"Reads/Writes<br/>Transactional"| GameDB
+    GameServer -->|"Pub/Sub<br/>Event queue"| Cache
+    GameServer -->|"Requests<br/>Rule compilation<br/>& evaluation"| LLMJudge
+    GameServer -->|"Authenticates<br/>users"| Auth
     
-    RuleAPI -->|"Reads/Writes"| RuleDB
-    RuleAPI -->|"Requests compilation"| JudgeAPI
-    RuleAPI -->|"Publishes events"| WSServer
+    %% LLM Judge connections
+    LLMJudge -->|"Stores<br/>enforcement cases<br/>& precedents"| KnowledgeGraph
+    LLMJudge -->|"NL processing<br/>& generation"| LLM
     
-    JudgeAPI -->|"Compiles rules,<br/>evaluates actions"| LLM
-    JudgeAPI -->|"Stores cases"| RuleDB
-    
-    GameAPI -->|"Requests evaluation"| JudgeAPI
-    
-    WSServer -->|"Reads state"| Cache
-    
-    GameAPI -->|"Authenticates"| Auth
-    RuleAPI -->|"Authenticates"| Auth
-    
-    style WebApp fill:#61DAFB,stroke:#20232A,stroke-width:2px,color:#000
-    style GameAPI fill:#68A063,stroke:#3C5F3A,stroke-width:2px,color:#fff
-    style RuleAPI fill:#68A063,stroke:#3C5F3A,stroke-width:2px,color:#fff
-    style JudgeAPI fill:#009688,stroke:#00695C,stroke-width:2px,color:#fff
-    style WSServer fill:#FF6B6B,stroke:#CC5555,stroke-width:2px,color:#fff
+    %% Styling
+    style WebApp fill:#61DAFB,stroke:#20232A,stroke-width:3px,color:#000
+    style GameServer fill:#68A063,stroke:#3C5F3A,stroke-width:3px,color:#fff
+    style LLMJudge fill:#009688,stroke:#00695C,stroke-width:3px,color:#fff
     style GameDB fill:#336791,stroke:#1A3A5C,stroke-width:2px,color:#fff
-    style RuleDB fill:#336791,stroke:#1A3A5C,stroke-width:2px,color:#fff
+    style KnowledgeGraph fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
     style Cache fill:#DC382D,stroke:#A82A21,stroke-width:2px,color:#fff
     style LLM fill:#FF6B6B,stroke:#CC5555,stroke-width:2px,color:#fff
     style Auth fill:#FFA500,stroke:#CC8400,stroke-width:2px,color:#fff
