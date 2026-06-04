@@ -4,8 +4,9 @@ A browser-based implementation of the card game Mao with an LLM-powered judge, d
 
 ## Project Overview
 
-**Status:** In Development  
-**Complexity Tier:** COMPLEX  
+**Status:** Design Complete - Ready for Implementation
+**Complexity Tier:** COMPLEX
+**GitHub Repository:** [mterry/digital-mao](https://github.com/mterry/digital-mao)
 **Monday.com Board:** [Digital Mao Game - Development](https://ibm.monday.com/boards/18415666999)
 
 ### What is Mao?
