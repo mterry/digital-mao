@@ -1,0 +1,532 @@
+asyncapi: 2.6.0
+info:
+  title: Digital Mao - Game Events
+  version: 1.0.0
+  description: |
+    Event-driven communication for game state changes and player actions.
+    These events are published via WebSocket to keep all clients synchronized in real-time.
+  contact:
+    name: Digital Mao API Support
+    email: api@digital-mao.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  x-diagrams:
+    sequence: ../diagrams/rendered/sequences/card-play-flow.html
+  x-diagram-sources:
+    sequence: ../diagrams/source/sequences/card-play-flow.mmd
+
+servers:
+  production:
+    url: wss://events.digital-mao.com
+    protocol: wss
+    description: Production WebSocket server
+  staging:
+    url: wss://staging-events.digital-mao.com
+    protocol: wss
+    description: Staging WebSocket server
+  development:
+    url: ws://localhost:3002
+    protocol: ws
+    description: Local development WebSocket server
+
+channels:
+  game/{gameId}/state:
+    description: Game state change events
+    parameters:
+      gameId:
+        description: Unique game identifier
+        schema:
+          type: string
+          format: uuid
+    subscribe:
+      summary: Receive game state updates
+      operationId: onGameStateChanged
+      message:
+        oneOf:
+          - $ref: '#/components/messages/GameStateChanged'
+          - $ref: '#/components/messages/GameStarted'
+          - $ref: '#/components/messages/GameEnded'
+          - $ref: '#/components/messages/RoundEnded'
+      x-traceability:
+        user-stories: [US-005, US-010, US-025]
+
+  game/{gameId}/players:
+    description: Player-related events
+    parameters:
+      gameId:
+        description: Unique game identifier
+        schema:
+          type: string
+          format: uuid
+    subscribe:
+      summary: Receive player events
+      operationId: onPlayerEvent
+      message:
+        oneOf:
+          - $ref: '#/components/messages/PlayerJoined'
+          - $ref: '#/components/messages/PlayerLeft'
+          - $ref: '#/components/messages/PlayerDisconnected'
+          - $ref: '#/components/messages/PlayerReconnected'
+          - $ref: '#/components/messages/PlayerReadyChanged'
+      x-traceability:
+        user-stories: [US-003, US-004, US-024, US-026]
+
+  game/{gameId}/actions:
+    description: Game action events
+    parameters:
+      gameId:
+        description: Unique game identifier
+        schema:
+          type: string
+          format: uuid
+    subscribe:
+      summary: Receive game action events
+      operationId: onGameAction
+      message:
+        oneOf:
+          - $ref: '#/components/messages/CardPlayed'
+          - $ref: '#/components/messages/CardDrawn'
+          - $ref: '#/components/messages/TurnChanged'
+          - $ref: '#/components/messages/SpecialCardEffect'
+      x-traceability:
+        user-stories: [US-006, US-007, US-008]
+
+  game/{gameId}/penalties:
+    description: Penalty events
+    parameters:
+      gameId:
+        description: Unique game identifier
+        schema:
+          type: string
+          format: uuid
+    subscribe:
+      summary: Receive penalty events
+      operationId: onPenalty
+      message:
+        $ref: '#/components/messages/PenaltyApplied'
+      x-traceability:
+        user-stories: [US-009]
+
+components:
+  messages:
+    GameStateChanged:
+      name: game.state.changed
+      title: Game State Changed
+      summary: General game state update
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, changes]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          changes:
+            type: object
+            description: Changed fields in game state
+            properties:
+              status:
+                type: string
+                enum: [lobby, starting, in_progress, paused, round_ended, game_ended]
+              turnDirection:
+                type: string
+                enum: [clockwise, counterclockwise]
+              currentSuit:
+                type: string
+                enum: [hearts, diamonds, clubs, spades]
+              deckCount:
+                type: integer
+
+    GameStarted:
+      name: game.started
+      title: Game Started
+      summary: Game has started from lobby
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, startingPlayerId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          startingPlayerId:
+            type: string
+            format: uuid
+            description: Player who goes first
+          initialState:
+            type: object
+            description: Initial game state snapshot
+
+    GameEnded:
+      name: game.ended
+      title: Game Ended
+      summary: Game has ended
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, winnerId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          winnerId:
+            type: string
+            format: uuid
+          finalStandings:
+            type: array
+            items:
+              type: object
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                playerName:
+                  type: string
+                rank:
+                  type: integer
+                statistics:
+                  type: object
+
+    RoundEnded:
+      name: game.round.ended
+      title: Round Ended
+      summary: Current round has ended
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, winnerId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          winnerId:
+            type: string
+            format: uuid
+          canProposeRule:
+            type: boolean
+            description: Whether winner can propose a new rule
+
+    PlayerJoined:
+      name: player.joined
+      title: Player Joined
+      summary: A player has joined the game
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, player]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          player:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              name:
+                type: string
+              isHost:
+                type: boolean
+
+    PlayerLeft:
+      name: player.left
+      title: Player Left
+      summary: A player has left the game
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, playerId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          playerName:
+            type: string
+          reason:
+            type: string
+            enum: [voluntary, kicked, timeout]
+
+    PlayerDisconnected:
+      name: player.disconnected
+      title: Player Disconnected
+      summary: A player has disconnected
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, playerId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          playerName:
+            type: string
+          reconnectWindow:
+            type: integer
+            description: Seconds until player is removed
+
+    PlayerReconnected:
+      name: player.reconnected
+      title: Player Reconnected
+      summary: A player has reconnected
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, playerId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          playerName:
+            type: string
+
+    PlayerReadyChanged:
+      name: player.ready.changed
+      title: Player Ready Status Changed
+      summary: A player's ready status has changed in lobby
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, playerId, isReady]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          playerName:
+            type: string
+          isReady:
+            type: boolean
+
+    CardPlayed:
+      name: card.played
+      title: Card Played
+      summary: A player has played a card
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, playerId, card]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          playerName:
+            type: string
+          card:
+            $ref: 'card-schema-v1.0.0.json'
+          selectedSuit:
+            type: string
+            enum: [hearts, diamonds, clubs, spades]
+            description: Suit selected if card is an 8
+
+    CardDrawn:
+      name: card.drawn
+      title: Card Drawn
+      summary: A player has drawn a card
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, playerId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          playerName:
+            type: string
+          cardCount:
+            type: integer
+            description: Player's new card count
+          deckCount:
+            type: integer
+            description: Remaining cards in deck
+
+    TurnChanged:
+      name: turn.changed
+      title: Turn Changed
+      summary: The active turn has changed to another player
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, currentPlayerId, turnNumber]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          currentPlayerId:
+            type: string
+            format: uuid
+          currentPlayerName:
+            type: string
+          turnNumber:
+            type: integer
+          turnDirection:
+            type: string
+            enum: [clockwise, counterclockwise]
+
+    SpecialCardEffect:
+      name: card.special.effect
+      title: Special Card Effect
+      summary: A special card effect has been triggered
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, effect]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          effect:
+            type: string
+            enum: [suit_change, reverse_direction, skip_next]
+          details:
+            type: object
+            properties:
+              newSuit:
+                type: string
+                enum: [hearts, diamonds, clubs, spades]
+              newDirection:
+                type: string
+                enum: [clockwise, counterclockwise]
+              skippedPlayerId:
+                type: string
+                format: uuid
+
+    PenaltyApplied:
+      name: penalty.applied
+      title: Penalty Applied
+      summary: A penalty has been applied to a player
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, playerId, cardCount, message]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          playerName:
+            type: string
+          cardCount:
+            type: integer
+            minimum: 1
+            description: Number of penalty cards
+          message:
+            type: string
+            description: Cryptic penalty message
+          ruleId:
+            type: string
+            format: uuid
+            description: Rule that was violated
+          severity:
+            type: string
+            enum: [minor, moderate, major]
+
+x-traceability:
+  user-stories: [US-003, US-004, US-005, US-006, US-007, US-008, US-009, US-010, US-024, US-025, US-026]
+  requirements: [REQ-EVENT-001, REQ-EVENT-002, REQ-REALTIME-001]
+
+# Made with Bob

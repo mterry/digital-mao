@@ -1,0 +1,31 @@
+graph TB
+    subgraph "Digital Mao System Context"
+        User[("👤 Player<br/>(Card Game Enthusiast,<br/>Mao Veteran,<br/>Curious Newcomer)")]
+        Spectator[("👁️ Spectator<br/>(Observer)")]
+        
+        System["🎮 Digital Mao<br/>Web Application<br/><br/>Online multiplayer card game<br/>with AI judge and dynamic rules"]
+        
+        LLM["🤖 LLM Service<br/>(OpenAI/Anthropic)<br/><br/>Rule compilation and<br/>enforcement decisions"]
+        
+        Auth["🔐 Authentication<br/>Service<br/><br/>User authentication<br/>and authorization"]
+        
+        Storage["💾 Cloud Storage<br/>(AWS S3/GCS)<br/><br/>Game history and<br/>rule archives"]
+    end
+    
+    User -->|"Plays games,<br/>creates rules,<br/>sends chat"| System
+    Spectator -->|"Watches games,<br/>views chat"| System
+    
+    System -->|"Compiles rules,<br/>evaluates actions<br/>[HTTPS/JSON]"| LLM
+    System -->|"Authenticates users<br/>[HTTPS/JWT]"| Auth
+    System -->|"Stores game data<br/>[HTTPS/REST]"| Storage
+    
+    LLM -->|"Compiled rules,<br/>enforcement decisions"| System
+    Auth -->|"Auth tokens,<br/>user profiles"| System
+    Storage -->|"Game history,<br/>rule data"| System
+    
+    style System fill:#4A90E2,stroke:#2E5C8A,stroke-width:3px,color:#fff
+    style User fill:#50C878,stroke:#2E7D4E,stroke-width:2px,color:#fff
+    style Spectator fill:#50C878,stroke:#2E7D4E,stroke-width:2px,color:#fff
+    style LLM fill:#FF6B6B,stroke:#CC5555,stroke-width:2px,color:#fff
+    style Auth fill:#FFA500,stroke:#CC8400,stroke-width:2px,color:#fff
+    style Storage fill:#9B59B6,stroke:#7D3C98,stroke-width:2px,color:#fff

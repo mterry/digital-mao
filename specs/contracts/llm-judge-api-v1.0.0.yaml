@@ -1,0 +1,497 @@
+openapi: 3.1.0
+info:
+  title: Digital Mao - LLM Judge API
+  version: 1.0.0
+  description: |
+    Internal API for the LLM Judge system that evaluates game actions against rules
+    and makes enforcement decisions. This API is called by the game server and is not
+    directly accessible to clients.
+  contact:
+    name: Digital Mao API Support
+    email: api@digital-mao.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  x-diagrams:
+    sequence-enforcement: ../diagrams/rendered/sequences/penalty-enforcement-flow.html
+  x-diagram-sources:
+    sequence-enforcement: ../diagrams/source/sequences/penalty-enforcement-flow.mmd
+
+servers:
+  - url: https://judge.digital-mao.com/v1
+    description: Production judge service
+  - url: https://staging-judge.digital-mao.com/v1
+    description: Staging judge service
+  - url: http://localhost:3001/v1
+    description: Local development judge service
+
+tags:
+  - name: evaluation
+    description: Rule evaluation operations
+  - name: compilation
+    description: Rule compilation operations
+  - name: learning
+    description: Judge learning and improvement
+
+paths:
+  /evaluate:
+    post:
+      tags: [evaluation]
+      summary: Evaluate an action against rules
+      description: |
+        Evaluate a player action against all active rules and return enforcement decisions.
+        This is the primary endpoint called by the game server for every player action.
+      operationId: evaluateAction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [gameId, action, context, activeRules]
+              properties:
+                gameId:
+                  type: string
+                  format: uuid
+                  description: ID of the game
+                action:
+                  type: object
+                  description: The action to evaluate
+                  required: [type, playerId, timestamp]
+                  properties:
+                    type:
+                      type: string
+                      enum: [card_played, card_drawn, chat_message, turn_action]
+                    playerId:
+                      type: string
+                      format: uuid
+                    timestamp:
+                      type: string
+                      format: date-time
+                    details:
+                      type: object
+                      description: Action-specific details
+                context:
+                  type: object
+                  description: Game context for evaluation
+                  required: [recentActions, gameState, playerHistory]
+                  properties:
+                    recentActions:
+                      type: array
+                      description: Last 10 game actions
+                      items:
+                        type: object
+                      maxItems: 10
+                    gameState:
+                      type: object
+                      description: Current game state snapshot
+                    playerHistory:
+                      type: object
+                      description: Player's violation history
+                activeRules:
+                  type: array
+                  description: All active compiled rules to evaluate against
+                  items:
+                    $ref: '#/components/schemas/CompiledRule'
+      responses:
+        '200':
+          description: Evaluation completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  evaluationId:
+                    type: string
+                    format: uuid
+                  violations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ruleId:
+                          type: string
+                          format: uuid
+                        compiledRuleId:
+                          type: string
+                          format: uuid
+                        violated:
+                          type: boolean
+                        confidence:
+                          type: number
+                          minimum: 0
+                          maximum: 1
+                        reasoning:
+                          type: string
+                        penalty:
+                          type: object
+                          properties:
+                            cardCount:
+                              type: integer
+                              minimum: 1
+                            message:
+                              type: string
+                            severity:
+                              type: string
+                              enum: [minor, moderate, major]
+                  processingTime:
+                    type: integer
+                    description: Processing time in milliseconds
+                  metadata:
+                    type: object
+                    properties:
+                      model:
+                        type: string
+                      tokensUsed:
+                        type: integer
+                      temperature:
+                        type: number
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-009, US-021, US-022]
+
+  /compile:
+    post:
+      tags: [compilation]
+      summary: Compile a natural language rule
+      description: |
+        Convert a natural language rule description into a machine-executable format.
+        Uses LLM to parse intent and generate structured rule definition.
+      operationId: compileRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ruleId, description]
+              properties:
+                ruleId:
+                  type: string
+                  format: uuid
+                description:
+                  type: string
+                  minLength: 10
+                  maxLength: 1000
+                  description: Natural language rule description
+                priority:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 50
+                category:
+                  type: string
+                  enum: [speech, timing, card_play, turn_order, special_action, meta]
+                existingRules:
+                  type: array
+                  description: Existing rules to check for conflicts
+                  items:
+                    $ref: '#/components/schemas/CompiledRule'
+      responses:
+        '200':
+          description: Rule compiled successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  compiledRule:
+                    $ref: '#/components/schemas/CompiledRule'
+                  conflicts:
+                    type: array
+                    description: Potential conflicts with existing rules
+                    items:
+                      type: object
+                      properties:
+                        ruleId:
+                          type: string
+                          format: uuid
+                        conflictType:
+                          type: string
+                        description:
+                          type: string
+                  suggestions:
+                    type: array
+                    description: Suggestions for rule improvement
+                    items:
+                      type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-017, US-018]
+
+  /compile/validate:
+    post:
+      tags: [compilation]
+      summary: Validate a compiled rule
+      description: |
+        Test a compiled rule against example scenarios to ensure it behaves as expected.
+      operationId: validateCompiledRule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [compiledRule, testScenarios]
+              properties:
+                compiledRule:
+                  $ref: '#/components/schemas/CompiledRule'
+                testScenarios:
+                  type: array
+                  description: Test scenarios to validate against
+                  items:
+                    type: object
+                    properties:
+                      description:
+                        type: string
+                      action:
+                        type: object
+                      context:
+                        type: object
+                      expectedViolation:
+                        type: boolean
+      responses:
+        '200':
+          description: Validation completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                    description: Whether rule passes all test scenarios
+                  results:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        scenario:
+                          type: string
+                        passed:
+                          type: boolean
+                        actualViolation:
+                          type: boolean
+                        expectedViolation:
+                          type: boolean
+                        confidence:
+                          type: number
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /feedback:
+    post:
+      tags: [learning]
+      summary: Submit enforcement feedback
+      description: |
+        Submit feedback on an enforcement decision to improve future judgments.
+        This feedback is used to fine-tune the judge's decision-making.
+      operationId: submitFeedback
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enforcementCaseId, correct]
+              properties:
+                enforcementCaseId:
+                  type: string
+                  format: uuid
+                correct:
+                  type: boolean
+                  description: Whether the enforcement decision was correct
+                correctDecision:
+                  type: object
+                  description: What the correct decision should have been
+                  properties:
+                    violated:
+                      type: boolean
+                    reasoning:
+                      type: string
+                comments:
+                  type: string
+                  maxLength: 500
+                context:
+                  type: object
+                  description: Additional context about why decision was wrong
+      responses:
+        '200':
+          description: Feedback recorded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  learningImpact:
+                    type: string
+                    description: How this feedback will be used
+                    enum: [immediate_adjustment, pattern_learning, edge_case_documentation]
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-023]
+
+  /analyze/ambiguity:
+    post:
+      tags: [learning]
+      summary: Analyze rule ambiguity
+      description: |
+        Analyze a rule for potential ambiguities or edge cases that may cause
+        inconsistent enforcement.
+      operationId: analyzeAmbiguity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ruleDescription]
+              properties:
+                ruleDescription:
+                  type: string
+                compiledRule:
+                  $ref: '#/components/schemas/CompiledRule'
+                enforcementHistory:
+                  type: array
+                  description: Past enforcement cases for this rule
+                  items:
+                    $ref: '#/components/schemas/EnforcementCase'
+      responses:
+        '200':
+          description: Analysis completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ambiguityScore:
+                    type: number
+                    minimum: 0
+                    maximum: 1
+                    description: Overall ambiguity score (0=clear, 1=very ambiguous)
+                  ambiguities:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                          enum: [timing, scope, condition, exception]
+                        description:
+                          type: string
+                        severity:
+                          type: string
+                          enum: [minor, moderate, major]
+                        suggestion:
+                          type: string
+                  edgeCases:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        scenario:
+                          type: string
+                        likelihood:
+                          type: string
+                          enum: [rare, occasional, common]
+                        recommendation:
+                          type: string
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /health:
+    get:
+      tags: [evaluation]
+      summary: Health check
+      description: Check if the judge service is healthy and responsive
+      operationId: healthCheck
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, degraded]
+                  model:
+                    type: string
+                  averageResponseTime:
+                    type: integer
+                    description: Average response time in milliseconds
+                  uptime:
+                    type: integer
+                    description: Uptime in seconds
+
+components:
+  schemas:
+    CompiledRule:
+      type: object
+      description: Machine-executable compiled rule
+      allOf:
+        - $ref: 'compiled-rule-schema-v1.0.0.json'
+
+    EnforcementCase:
+      type: object
+      description: Rule enforcement case
+      allOf:
+        - $ref: 'enforcement-case-schema-v1.0.0.json'
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: Internal service API key
+
+security:
+  - apiKey: []
+
+x-traceability:
+  user-stories: [US-009, US-017, US-018, US-021, US-022, US-023]
+  requirements: [REQ-JUDGE-001, REQ-JUDGE-002, REQ-JUDGE-003, REQ-JUDGE-004]
+
+# Made with Bob

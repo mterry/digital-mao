@@ -1,0 +1,82 @@
+sequenceDiagram
+    participant Player as 👤 Player
+    participant UI as ⚛️ Web App
+    participant GameAPI as 🎮 Game API
+    participant Judge as ⚖️ Judge API
+    participant WS as 🔌 WebSocket
+    participant DB as 🗄️ Database
+    
+    Note over Player,DB: Card Play Flow with Rule Enforcement
+    
+    Player->>UI: Select card from hand
+    UI->>UI: Highlight selected card
+    UI->>UI: Enable "Play Card" button
+    
+    Player->>UI: Click "Play Card"
+    
+    alt Card is an 8
+        UI->>Player: Show suit selector modal
+        Player->>UI: Select suit (hearts/diamonds/clubs/spades)
+    end
+    
+    UI->>UI: Disable UI (loading state)
+    UI->>GameAPI: POST /games/{id}/actions/play-card<br/>{cardId, selectedSuit?}
+    
+    GameAPI->>DB: Validate game state
+    DB-->>GameAPI: Current game state
+    
+    GameAPI->>GameAPI: Validate card play<br/>(matches suit/rank)
+    
+    alt Invalid card play
+        GameAPI-->>UI: 400 Bad Request<br/>{error: "Invalid card"}
+        UI->>UI: Show error message
+        UI->>UI: Re-enable UI
+    else Valid card play
+        GameAPI->>Judge: POST /evaluate<br/>{action, context, rules}
+        
+        Note over Judge: Evaluate against<br/>all active rules
+        
+        Judge->>Judge: Check each rule's<br/>triggers and conditions
+        
+        alt Rule violation detected
+            Judge-->>GameAPI: {violations: [{ruleId, penalty}]}
+            GameAPI->>DB: Apply penalty cards
+            GameAPI->>DB: Update player hand
+        else No violations
+            Judge-->>GameAPI: {violations: []}
+        end
+        
+        GameAPI->>DB: Update game state<br/>(move card, advance turn)
+        DB-->>GameAPI: Updated state
+        
+        GameAPI->>WS: Publish card.played event
+        GameAPI->>WS: Publish turn.changed event
+        
+        alt Penalty applied
+            GameAPI->>WS: Publish penalty.applied event
+        end
+        
+        alt Special card effect
+            GameAPI->>WS: Publish card.special.effect event
+        end
+        
+        GameAPI-->>UI: 200 OK<br/>{game, penalties}
+        
+        WS-->>UI: card.played event
+        WS-->>UI: turn.changed event
+        
+        alt Penalty applied
+            WS-->>UI: penalty.applied event
+            UI->>UI: Show penalty notification
+            UI->>UI: Add penalty cards to hand
+        end
+        
+        UI->>UI: Animate card to discard pile
+        UI->>UI: Update game state
+        UI->>UI: Update turn indicator
+        UI->>UI: Re-enable UI
+        
+        UI->>Player: Show updated game state
+    end
+    
+    Note over Player,DB: All players receive real-time updates via WebSocket

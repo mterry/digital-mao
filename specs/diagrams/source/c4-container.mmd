@@ -1,0 +1,64 @@
+graph TB
+    subgraph "Digital Mao - Container View"
+        subgraph "Client Layer"
+            WebApp["⚛️ React Web App<br/>(TypeScript)<br/><br/>Game UI, chat,<br/>rule management"]
+        end
+        
+        subgraph "API Layer"
+            GameAPI["🎮 Game Management API<br/>(Node.js/Express)<br/><br/>Game CRUD, player actions,<br/>game state management"]
+            
+            RuleAPI["📜 Rule Management API<br/>(Node.js/Express)<br/><br/>Rule proposals, compilation,<br/>activation, enforcement stats"]
+            
+            JudgeAPI["⚖️ LLM Judge API<br/>(Python/FastAPI)<br/><br/>Rule compilation,<br/>action evaluation,<br/>penalty decisions"]
+        end
+        
+        subgraph "Real-time Layer"
+            WSServer["🔌 WebSocket Server<br/>(Socket.io)<br/><br/>Real-time game events,<br/>chat, rule updates"]
+        end
+        
+        subgraph "Data Layer"
+            GameDB[("🗄️ Game Database<br/>(PostgreSQL)<br/><br/>Games, players,<br/>actions, history")]
+            
+            RuleDB[("📚 Rule Database<br/>(PostgreSQL)<br/><br/>Rules, compiled rules,<br/>enforcement cases")]
+            
+            Cache[("⚡ Redis Cache<br/><br/>Active games,<br/>player sessions,<br/>real-time state")]
+        end
+    end
+    
+    subgraph "External Services"
+        LLM["🤖 LLM Service<br/>(OpenAI/Anthropic)"]
+        Auth["🔐 Auth Service"]
+    end
+    
+    WebApp -->|"REST API<br/>[HTTPS/JSON]"| GameAPI
+    WebApp -->|"REST API<br/>[HTTPS/JSON]"| RuleAPI
+    WebApp -->|"WebSocket<br/>[WSS]"| WSServer
+    
+    GameAPI -->|"Reads/Writes"| GameDB
+    GameAPI -->|"Caches state"| Cache
+    GameAPI -->|"Publishes events"| WSServer
+    
+    RuleAPI -->|"Reads/Writes"| RuleDB
+    RuleAPI -->|"Requests compilation"| JudgeAPI
+    RuleAPI -->|"Publishes events"| WSServer
+    
+    JudgeAPI -->|"Compiles rules,<br/>evaluates actions"| LLM
+    JudgeAPI -->|"Stores cases"| RuleDB
+    
+    GameAPI -->|"Requests evaluation"| JudgeAPI
+    
+    WSServer -->|"Reads state"| Cache
+    
+    GameAPI -->|"Authenticates"| Auth
+    RuleAPI -->|"Authenticates"| Auth
+    
+    style WebApp fill:#61DAFB,stroke:#20232A,stroke-width:2px,color:#000
+    style GameAPI fill:#68A063,stroke:#3C5F3A,stroke-width:2px,color:#fff
+    style RuleAPI fill:#68A063,stroke:#3C5F3A,stroke-width:2px,color:#fff
+    style JudgeAPI fill:#009688,stroke:#00695C,stroke-width:2px,color:#fff
+    style WSServer fill:#FF6B6B,stroke:#CC5555,stroke-width:2px,color:#fff
+    style GameDB fill:#336791,stroke:#1A3A5C,stroke-width:2px,color:#fff
+    style RuleDB fill:#336791,stroke:#1A3A5C,stroke-width:2px,color:#fff
+    style Cache fill:#DC382D,stroke:#A82A21,stroke-width:2px,color:#fff
+    style LLM fill:#FF6B6B,stroke:#CC5555,stroke-width:2px,color:#fff
+    style Auth fill:#FFA500,stroke:#CC8400,stroke-width:2px,color:#fff

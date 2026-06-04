@@ -1,0 +1,297 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/contracts/gameboard-component-v1.0.0.json",
+  "title": "GameBoard Component Contract",
+  "description": "Contract for the main game board UI component that displays game state",
+  "version": "1.0.0",
+  "component": {
+    "name": "GameBoard",
+    "type": "container",
+    "framework": "React",
+    "description": "Main game board displaying cards, players, and game state"
+  },
+  "props": {
+    "type": "object",
+    "required": ["gameState", "currentPlayerId", "onCardPlay", "onCardDraw"],
+    "properties": {
+      "gameState": {
+        "type": "object",
+        "description": "Current game state",
+        "$ref": "../game-state-schema-v1.0.0.json"
+      },
+      "currentPlayerId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "ID of the current user viewing the board"
+      },
+      "onCardPlay": {
+        "type": "function",
+        "description": "Callback when player plays a card",
+        "signature": "(cardId: string, selectedSuit?: string) => Promise<void>",
+        "parameters": [
+          {
+            "name": "cardId",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "selectedSuit",
+            "type": "string",
+            "enum": ["hearts", "diamonds", "clubs", "spades"],
+            "required": false,
+            "description": "Required when playing an 8"
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "onCardDraw": {
+        "type": "function",
+        "description": "Callback when player draws a card",
+        "signature": "() => Promise<void>",
+        "parameters": [],
+        "returns": "Promise<void>"
+      },
+      "isSpectator": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether current user is spectating"
+      },
+      "showDebugInfo": {
+        "type": "boolean",
+        "default": false,
+        "description": "Show debug information (development only)"
+      }
+    }
+  },
+  "state": {
+    "type": "object",
+    "properties": {
+      "selectedCardId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "Currently selected card in hand"
+      },
+      "isPlayingCard": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether a card play is in progress"
+      },
+      "isDrawingCard": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether a card draw is in progress"
+      },
+      "showSuitSelector": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether suit selector modal is shown"
+      },
+      "animatingCards": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Cards currently being animated"
+      }
+    }
+  },
+  "events": {
+    "emitted": [
+      {
+        "name": "cardPlayed",
+        "description": "Emitted when a card is successfully played",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "cardId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "playerId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "selectedSuit": {
+              "type": "string",
+              "enum": ["hearts", "diamonds", "clubs", "spades"]
+            }
+          }
+        }
+      },
+      {
+        "name": "cardDrawn",
+        "description": "Emitted when a card is successfully drawn",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "playerId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      {
+        "name": "error",
+        "description": "Emitted when an error occurs",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "message": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    ],
+    "subscribed": [
+      {
+        "name": "game.state.changed",
+        "source": "WebSocket",
+        "description": "Game state updates from server"
+      },
+      {
+        "name": "card.played",
+        "source": "WebSocket",
+        "description": "Card played by any player"
+      },
+      {
+        "name": "card.drawn",
+        "source": "WebSocket",
+        "description": "Card drawn by any player"
+      },
+      {
+        "name": "turn.changed",
+        "source": "WebSocket",
+        "description": "Turn changed to another player"
+      }
+    ]
+  },
+  "children": [
+    {
+      "name": "DiscardPile",
+      "required": true,
+      "description": "Displays the discard pile with top card"
+    },
+    {
+      "name": "DrawPile",
+      "required": true,
+      "description": "Displays the draw pile with card count"
+    },
+    {
+      "name": "PlayerHand",
+      "required": true,
+      "description": "Displays current player's hand"
+    },
+    {
+      "name": "PlayerList",
+      "required": true,
+      "description": "Displays all players and their card counts"
+    },
+    {
+      "name": "TurnIndicator",
+      "required": true,
+      "description": "Shows whose turn it is"
+    },
+    {
+      "name": "SuitSelector",
+      "required": false,
+      "description": "Modal for selecting suit when playing an 8"
+    }
+  ],
+  "accessibility": {
+    "requirements": [
+      "ARIA labels for all interactive elements",
+      "Keyboard navigation support (Tab, Enter, Space)",
+      "Screen reader announcements for game state changes",
+      "High contrast mode support",
+      "Focus indicators on all focusable elements",
+      "Alt text for all card images"
+    ],
+    "roles": {
+      "container": "region",
+      "discardPile": "img",
+      "drawPile": "button",
+      "playerHand": "list"
+    }
+  },
+  "styling": {
+    "cssClasses": [
+      "game-board",
+      "game-board__discard-pile",
+      "game-board__draw-pile",
+      "game-board__player-hand",
+      "game-board__player-list",
+      "game-board__turn-indicator"
+    ],
+    "cssVariables": [
+      "--board-bg-color",
+      "--card-width",
+      "--card-height",
+      "--animation-duration",
+      "--highlight-color"
+    ],
+    "responsive": {
+      "breakpoints": {
+        "mobile": "< 768px",
+        "tablet": "768px - 1024px",
+        "desktop": "> 1024px"
+      }
+    }
+  },
+  "performance": {
+    "requirements": [
+      "Initial render < 100ms",
+      "Card animation 60fps",
+      "State update < 16ms",
+      "Memory usage < 50MB"
+    ],
+    "optimizations": [
+      "React.memo for child components",
+      "useMemo for expensive calculations",
+      "useCallback for event handlers",
+      "Virtual scrolling for large player lists"
+    ]
+  },
+  "testing": {
+    "unit": [
+      "Renders correctly with valid game state",
+      "Handles card selection",
+      "Calls onCardPlay with correct parameters",
+      "Calls onCardDraw when draw pile clicked",
+      "Shows suit selector when playing an 8",
+      "Disables actions when not player's turn",
+      "Shows spectator view correctly"
+    ],
+    "integration": [
+      "Receives and displays WebSocket updates",
+      "Animates card plays smoothly",
+      "Updates turn indicator correctly",
+      "Handles disconnection gracefully"
+    ],
+    "e2e": [
+      "Complete card play flow",
+      "Complete card draw flow",
+      "Multi-player synchronization",
+      "Error handling and recovery"
+    ]
+  },
+  "diagrams": {
+    "component-hierarchy": "../diagrams/rendered/gameboard-hierarchy.html",
+    "state-flow": "../diagrams/rendered/gameboard-state-flow.html",
+    "interaction": "../diagrams/rendered/gameboard-interaction.html"
+  },
+  "diagram-sources": {
+    "component-hierarchy": "../diagrams/source/gameboard-hierarchy.mmd",
+    "state-flow": "../diagrams/source/gameboard-state-flow.mmd",
+    "interaction": "../diagrams/source/gameboard-interaction.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-005", "US-006", "US-007", "US-008", "US-027"],
+    "requirements": ["REQ-UI-001", "REQ-UI-002", "REQ-PERF-001"]
+  }
+}

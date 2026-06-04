@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rule Compilation Flow</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Rule Compilation Flow</h1>
+        <div class="mermaid">
+sequenceDiagram
+    participant Winner as 👤 Winner
+    participant UI as ⚛️ Web App
+    participant RuleAPI as 📜 Rule API
+    participant Judge as ⚖️ Judge API
+    participant LLM as 🤖 LLM Service
+    participant WS as 🔌 WebSocket
+    participant DB as 🗄️ Database
+    
+    Note over Winner,DB: Rule Compilation Flow
+    
+    Winner->>UI: Round won - prompted to propose rule
+    UI->>Winner: Show rule proposal form
+    
+    Winner->>UI: Enter rule description<br/>"Players must say 'Have a nice day' when playing a 7"
+    Winner->>UI: Select priority (50)
+    Winner->>UI: Select category (speech)
+    Winner->>UI: Click "Submit Rule"
+    
+    UI->>UI: Validate input<br/>(10-1000 chars, priority 1-100)
+    
+    UI->>RuleAPI: POST /games/{id}/rules<br/>{description, priority, category}
+    
+    RuleAPI->>DB: Create rule record<br/>(status: proposed)
+    DB-->>RuleAPI: Rule created {ruleId}
+    
+    RuleAPI->>WS: Publish rule.proposed event
+    RuleAPI-->>UI: 201 Created {rule}
+    
+    UI->>UI: Show "Compiling..." state
+    WS-->>UI: rule.proposed event
+    
+    RuleAPI->>Judge: POST /compile<br/>{ruleId, description, priority, category}
+    
+    RuleAPI->>DB: Update rule status<br/>(status: compiling)
+    RuleAPI->>WS: Publish rule.compiling event
+    WS-->>UI: rule.compiling event
+    
+    Judge->>Judge: Parse natural language
+    Judge->>WS: Publish compilation.progress<br/>(stage: parsing, 25%)
+    WS-->>UI: Show progress: "Parsing..."
+    
+    Judge->>LLM: Analyze rule intent<br/>Extract triggers, conditions, actions
+    LLM-->>Judge: Structured rule components
+    
+    Judge->>WS: Publish compilation.progress<br/>(stage: analyzing, 50%)
+    WS-->>UI: Show progress: "Analyzing..."
+    
+    Judge->>Judge: Generate executable format<br/>(triggers, conditions, actions, penalties)
+    
+    Judge->>WS: Publish compilation.progress<br/>(stage: generating, 75%)
+    WS-->>UI: Show progress: "Generating..."
+    
+    Judge->>DB: Query existing rules<br/>for conflict detection
+    DB-->>Judge: Active rules
+    
+    Judge->>Judge: Check for conflicts<br/>Identify ambiguities
+    
+    Judge->>WS: Publish compilation.progress<br/>(stage: validating, 90%)
+    WS-->>UI: Show progress: "Validating..."
+    
+    Judge->>DB: Store compiled rule
+    DB-->>Judge: Compiled rule saved
+    
+    Judge-->>RuleAPI: 200 OK<br/>{compiledRule, conflicts, ambiguities}
+    
+    RuleAPI->>DB: Update rule status<br/>(status: review)
+    RuleAPI->>WS: Publish rule.compiled event
+    WS-->>UI: rule.compiled event
+    
+    UI->>Winner: Show compiled rule for review<br/>- Triggers: card_played (rank=7)<br/>- Actions: require_speech("Have a nice day")<br/>- Penalty: 1 card
+    
+    alt Winner approves
+        Winner->>UI: Click "Approve"
+        UI->>RuleAPI: PATCH /games/{id}/rules/{ruleId}<br/>{status: approved, feedback}
+        
+        RuleAPI->>DB: Update rule status<br/>(status: approved)
+        RuleAPI->>WS: Publish rule.approved event
+        
+        RuleAPI->>DB: Update rule status<br/>(status: active)
+        RuleAPI->>WS: Publish rule.activated event<br/>(with cryptic announcement)
+        
+        RuleAPI-->>UI: 200 OK {rule}
+        WS-->>UI: rule.activated event
+        
+        UI->>Winner: Show "Rule activated!"
+        UI->>UI: Display cryptic announcement<br/>to all players
+        
+    else Winner rejects
+        Winner->>UI: Click "Reject"<br/>Provide reason
+        UI->>RuleAPI: PATCH /games/{id}/rules/{ruleId}<br/>{status: rejected, reason}
+        
+        RuleAPI->>DB: Update rule status<br/>(status: rejected)
+        RuleAPI->>WS: Publish rule.rejected event
+        
+        RuleAPI-->>UI: 200 OK {rule}
+        WS-->>UI: rule.rejected event
+        
+        UI->>Winner: Show "Rule rejected"<br/>Option to try again
+    end
+    
+    Note over Winner,DB: Rule is now active and will be enforced by Judge
+        </div>
+        <div class="footer">
+            <p>Generated from Mermaid source diagram</p>
+            <p>Interactive diagram - you can zoom and pan</p>
+        </div>
+    </div>
+</body>
+</html>

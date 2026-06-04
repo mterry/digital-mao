@@ -1,0 +1,134 @@
+classDiagram
+    class Game {
+        +UUID id
+        +String name
+        +GameStatus status
+        +UUID hostId
+        +Settings settings
+        +DateTime createdAt
+        +DateTime startedAt
+        +createGame()
+        +startGame()
+        +endGame()
+    }
+    
+    class Player {
+        +UUID id
+        +String name
+        +PlayerStatus status
+        +Card[] hand
+        +int cardCount
+        +boolean isHost
+        +boolean isCurrentTurn
+        +int penaltyCount
+        +joinGame()
+        +leaveGame()
+        +playCard()
+        +drawCard()
+    }
+    
+    class Card {
+        +UUID id
+        +Suit suit
+        +Rank rank
+        +String displayName
+        +boolean isSpecial
+        +SpecialEffect specialEffect
+    }
+    
+    class Deck {
+        +Card[] cards
+        +int count
+        +shuffle()
+        +draw()
+        +addCard()
+    }
+    
+    class DiscardPile {
+        +Card[] cards
+        +Card topCard
+        +addCard()
+        +getTopCard()
+    }
+    
+    class Rule {
+        +UUID id
+        +String description
+        +UUID creatorId
+        +RuleStatus status
+        +int priority
+        +RuleCategory category
+        +DateTime createdAt
+        +propose()
+        +compile()
+        +activate()
+    }
+    
+    class CompiledRule {
+        +UUID id
+        +UUID originalRuleId
+        +Trigger[] triggers
+        +Condition[] conditions
+        +Action[] actions
+        +Penalty penalties
+        +float confidence
+        +evaluate()
+    }
+    
+    class EnforcementCase {
+        +UUID id
+        +UUID gameId
+        +UUID ruleId
+        +UUID playerId
+        +Action action
+        +Context context
+        +Decision decision
+        +DateTime timestamp
+        +record()
+    }
+    
+    class ChatMessage {
+        +UUID id
+        +MessageType type
+        +String content
+        +UUID senderId
+        +String senderName
+        +DateTime timestamp
+        +send()
+    }
+    
+    class GameAction {
+        +UUID id
+        +ActionType type
+        +UUID playerId
+        +DateTime timestamp
+        +Object details
+        +execute()
+    }
+    
+    Game "1" --> "2..8" Player : has
+    Game "1" --> "1" Deck : has
+    Game "1" --> "1" DiscardPile : has
+    Game "1" --> "0..*" Rule : has
+    Game "1" --> "0..*" ChatMessage : has
+    Game "1" --> "0..*" GameAction : records
+    
+    Player "1" --> "0..52" Card : holds
+    
+    Deck "1" --> "0..52" Card : contains
+    DiscardPile "1" --> "0..52" Card : contains
+    
+    Rule "1" --> "0..1" CompiledRule : compiles to
+    CompiledRule "1" --> "0..*" EnforcementCase : generates
+    
+    EnforcementCase "1" --> "1" Player : targets
+    EnforcementCase "1" --> "1" Rule : enforces
+    
+    ChatMessage "1" --> "0..1" Player : sent by
+    GameAction "1" --> "1" Player : performed by
+    
+    note for Game "Central aggregate root<br/>Manages game lifecycle"
+    note for Player "Entity within Game<br/>Tracks player state"
+    note for Rule "Value object<br/>Natural language rule"
+    note for CompiledRule "Value object<br/>Executable rule format"
+    note for EnforcementCase "Event<br/>Records enforcement decision"

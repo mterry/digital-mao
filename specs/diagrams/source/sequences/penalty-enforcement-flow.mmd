@@ -1,0 +1,79 @@
+sequenceDiagram
+    participant Player as 👤 Player
+    participant GameAPI as 🎮 Game API
+    participant Judge as ⚖️ Judge API
+    participant LLM as 🤖 LLM Service
+    participant WS as 🔌 WebSocket
+    participant DB as 🗄️ Database
+    
+    Note over Player,DB: Penalty Enforcement Flow
+    
+    Player->>GameAPI: Performs action<br/>(e.g., plays card 7)
+    
+    GameAPI->>DB: Get active rules for game
+    DB-->>GameAPI: Active compiled rules
+    
+    GameAPI->>DB: Get recent game actions<br/>(last 10 for context)
+    DB-->>GameAPI: Action history
+    
+    GameAPI->>DB: Get player violation history
+    DB-->>GameAPI: Player's recent violations
+    
+    GameAPI->>Judge: POST /evaluate<br/>{action, context, activeRules}
+    
+    Note over Judge: Evaluate action against<br/>all active rules
+    
+    loop For each active rule
+        Judge->>Judge: Check if rule triggers match<br/>(e.g., card_played, rank=7)
+        
+        alt Trigger matches
+            Judge->>Judge: Evaluate conditions<br/>(timing, game state, etc.)
+            
+            alt Conditions met
+                Judge->>Judge: Check required actions<br/>(e.g., require_speech within 3s)
+                
+                Judge->>LLM: Analyze action context<br/>Did player say required phrase?
+                
+                LLM->>LLM: Check chat messages<br/>within time window
+                
+                alt Required action not performed
+                    LLM-->>Judge: Violation detected<br/>(confidence: 0.95)
+                    
+                    Judge->>Judge: Create enforcement case<br/>{ruleId, playerId, violated: true}
+                else Required action performed
+                    LLM-->>Judge: No violation<br/>(confidence: 0.92)
+                    
+                    Judge->>Judge: Create enforcement case<br/>{ruleId, playerId, violated: false}
+                end
+            end
+        end
+    end
+    
+    Judge->>DB: Store enforcement cases
+    DB-->>Judge: Cases stored
+    
+    Judge-->>GameAPI: {violations: [{ruleId, penalty, message, confidence}]}
+    
+    alt Violations detected
+        loop For each violation
+            GameAPI->>DB: Apply penalty<br/>(add cards to player hand)
+            
+            GameAPI->>DB: Create penalty record<br/>{playerId, ruleId, cardCount, message}
+            
+            GameAPI->>WS: Publish penalty.applied event<br/>{playerId, cardCount, crypticMessage}
+            
+            GameAPI->>WS: Publish chat.penalty.message<br/>(cryptic hint to player)
+        end
+        
+        WS-->>Player: penalty.applied event
+        WS-->>Player: Judge message in chat<br/>"One might consider the importance<br/>of proper farewells when dealing with sevens..."
+        
+        Note over Player: Player receives penalty cards<br/>and cryptic hint
+        
+    else No violations
+        Note over Judge,GameAPI: Action was compliant<br/>No penalties applied
+    end
+    
+    GameAPI->>DB: Log enforcement decision<br/>for learning
+    
+    Note over Player,DB: Enforcement case stored for:<br/>- Judge learning<br/>- Creator feedback<br/>- Pattern analysis

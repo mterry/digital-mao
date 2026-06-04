@@ -1,0 +1,201 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/schemas/rule-v1.0.0.json",
+  "title": "Rule",
+  "description": "Represents a natural language rule proposal in Digital Mao",
+  "type": "object",
+  "required": ["id", "description", "creatorId", "status", "createdAt"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the rule",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    },
+    "description": {
+      "type": "string",
+      "description": "Natural language description of the rule",
+      "minLength": 10,
+      "maxLength": 1000,
+      "examples": [
+        "Players must say 'Have a nice day' when playing a 7",
+        "When an Ace is played, the next player must draw 2 cards unless they also play an Ace"
+      ]
+    },
+    "creatorId": {
+      "type": "string",
+      "description": "ID of the player who created this rule",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440001"]
+    },
+    "creatorName": {
+      "type": "string",
+      "description": "Display name of the rule creator",
+      "minLength": 1,
+      "maxLength": 50,
+      "examples": ["Alice"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Current status of the rule",
+      "enum": ["proposed", "compiling", "review", "approved", "active", "rejected", "deprecated"],
+      "examples": ["active"]
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when rule was created",
+      "examples": ["2026-06-01T15:50:00Z"]
+    },
+    "compiledAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when rule was compiled"
+    },
+    "activatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when rule became active"
+    },
+    "gameId": {
+      "type": "string",
+      "description": "ID of the game this rule belongs to",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440100"]
+    },
+    "priority": {
+      "type": "integer",
+      "description": "Rule priority for conflict resolution (higher = more important)",
+      "minimum": 1,
+      "maximum": 100,
+      "default": 50,
+      "examples": [50, 75, 25]
+    },
+    "category": {
+      "type": "string",
+      "description": "Category of rule",
+      "enum": ["speech", "timing", "card_play", "turn_order", "special_action", "meta"],
+      "examples": ["speech", "card_play"]
+    },
+    "compiledRuleId": {
+      "type": "string",
+      "description": "ID of the compiled version of this rule",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440200"]
+    },
+    "feedback": {
+      "type": "object",
+      "description": "Creator feedback on compilation",
+      "properties": {
+        "approved": {
+          "type": "boolean",
+          "description": "Whether creator approved the compilation"
+        },
+        "comments": {
+          "type": "string",
+          "description": "Creator's comments on the compilation",
+          "maxLength": 500
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When feedback was provided"
+        }
+      }
+    },
+    "enforcementStats": {
+      "type": "object",
+      "description": "Statistics about rule enforcement",
+      "properties": {
+        "totalViolations": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total number of violations detected"
+        },
+        "totalPenalties": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total penalties issued"
+        },
+        "averageConfidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Average confidence score of enforcement decisions"
+        },
+        "lastEnforced": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time this rule was enforced"
+        }
+      },
+      "default": {
+        "totalViolations": 0,
+        "totalPenalties": 0,
+        "averageConfidence": 0,
+        "lastEnforced": null
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "IDs of rules that conflict with this one",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "default": []
+    },
+    "isDeprecated": {
+      "type": "boolean",
+      "description": "Whether this rule has been deprecated",
+      "default": false
+    },
+    "deprecatedReason": {
+      "type": "string",
+      "description": "Reason for deprecation",
+      "maxLength": 200
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "description": "Players must say 'Have a nice day' when playing a 7",
+      "creatorId": "550e8400-e29b-41d4-a716-446655440001",
+      "creatorName": "Alice",
+      "status": "active",
+      "createdAt": "2026-06-01T15:50:00Z",
+      "compiledAt": "2026-06-01T15:50:30Z",
+      "activatedAt": "2026-06-01T15:51:00Z",
+      "gameId": "550e8400-e29b-41d4-a716-446655440100",
+      "priority": 50,
+      "category": "speech",
+      "compiledRuleId": "550e8400-e29b-41d4-a716-446655440200",
+      "feedback": {
+        "approved": true,
+        "comments": "Looks good!",
+        "timestamp": "2026-06-01T15:50:45Z"
+      },
+      "enforcementStats": {
+        "totalViolations": 3,
+        "totalPenalties": 3,
+        "averageConfidence": 0.92,
+        "lastEnforced": "2026-06-01T15:55:00Z"
+      },
+      "conflicts": [],
+      "isDeprecated": false
+    }
+  ],
+  "x-diagrams": {
+    "sequence": "../diagrams/rendered/sequences/rule-compilation-flow.html",
+    "state-machine": "../diagrams/rendered/rule-state-machine.html"
+  },
+  "x-diagram-sources": {
+    "sequence": "../diagrams/source/sequences/rule-compilation-flow.mmd",
+    "state-machine": "../diagrams/source/rule-state-machine.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-017", "US-018", "US-019", "US-020"],
+    "requirements": ["REQ-RULE-001", "REQ-RULE-002", "REQ-RULE-003"]
+  }
+}

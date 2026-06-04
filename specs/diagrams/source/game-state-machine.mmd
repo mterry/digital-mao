@@ -1,0 +1,65 @@
+stateDiagram-v2
+    [*] --> Lobby: Game Created
+    
+    Lobby --> Starting: Host starts game<br/>(2+ players)
+    Lobby --> [*]: Game deleted<br/>(host cancels)
+    
+    Starting --> InProgress: Cards dealt<br/>Turn assigned
+    Starting --> Lobby: Start failed<br/>(error occurred)
+    
+    InProgress --> InProgress: Card played<br/>Card drawn<br/>Turn advanced
+    InProgress --> Paused: Host pauses<br/>Player disconnects
+    InProgress --> RoundEnded: Player empties hand
+    
+    Paused --> InProgress: Host resumes<br/>Player reconnects
+    Paused --> [*]: Game abandoned<br/>(timeout)
+    
+    RoundEnded --> InProgress: New round started<br/>(cards redealt)
+    RoundEnded --> GameEnded: Final round complete<br/>Winner declared
+    RoundEnded --> RoundEnded: Rule being proposed<br/>(winner's turn)
+    
+    GameEnded --> [*]: Game archived
+    
+    note right of Lobby
+        Players can:
+        - Join game
+        - Leave game
+        - Mark ready
+        - Chat
+    end note
+    
+    note right of InProgress
+        Players can:
+        - Play cards
+        - Draw cards
+        - Chat
+        - View game state
+        
+        System:
+        - Enforces rules
+        - Applies penalties
+        - Advances turns
+    end note
+    
+    note right of RoundEnded
+        Winner can:
+        - Propose new rule
+        - Decline to propose
+        
+        System waits for:
+        - Rule proposal
+        - Rule compilation
+        - Rule approval
+    end note
+    
+    note right of Paused
+        Reasons for pause:
+        - Player disconnected
+        - Host paused
+        - Technical issue
+        
+        Auto-resume when:
+        - Player reconnects
+        - Host resumes
+        - Issue resolved
+    end note

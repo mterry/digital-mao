@@ -1,0 +1,342 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/contracts/playerhand-component-v1.0.0.json",
+  "title": "PlayerHand Component Contract",
+  "description": "Contract for the player hand UI component that displays and manages player's cards",
+  "version": "1.0.0",
+  "component": {
+    "name": "PlayerHand",
+    "type": "presentational",
+    "framework": "React",
+    "description": "Displays player's hand of cards with selection and play capabilities"
+  },
+  "props": {
+    "type": "object",
+    "required": ["cards", "isCurrentTurn", "onCardSelect", "onCardPlay"],
+    "properties": {
+      "cards": {
+        "type": "array",
+        "description": "Cards in player's hand",
+        "items": {
+          "$ref": "../card-schema-v1.0.0.json"
+        },
+        "minItems": 0,
+        "maxItems": 52
+      },
+      "isCurrentTurn": {
+        "type": "boolean",
+        "description": "Whether it's currently this player's turn"
+      },
+      "selectedCardId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "ID of currently selected card"
+      },
+      "onCardSelect": {
+        "type": "function",
+        "description": "Callback when a card is selected",
+        "signature": "(cardId: string) => void",
+        "parameters": [
+          {
+            "name": "cardId",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "returns": "void"
+      },
+      "onCardPlay": {
+        "type": "function",
+        "description": "Callback when play button is clicked",
+        "signature": "(cardId: string) => void",
+        "parameters": [
+          {
+            "name": "cardId",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "returns": "void"
+      },
+      "topCard": {
+        "type": "object",
+        "description": "Top card of discard pile for validation",
+        "$ref": "../card-schema-v1.0.0.json"
+      },
+      "currentSuit": {
+        "type": "string",
+        "enum": ["hearts", "diamonds", "clubs", "spades"],
+        "description": "Current suit if changed by an 8"
+      },
+      "disabled": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether hand interaction is disabled"
+      },
+      "sortBy": {
+        "type": "string",
+        "enum": ["suit", "rank", "none"],
+        "default": "suit",
+        "description": "How to sort cards in hand"
+      },
+      "showPlayableIndicator": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether to highlight playable cards"
+      }
+    }
+  },
+  "state": {
+    "type": "object",
+    "properties": {
+      "hoveredCardId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "Card currently being hovered"
+      },
+      "sortedCards": {
+        "type": "array",
+        "description": "Cards sorted according to sortBy prop",
+        "items": {
+          "$ref": "../card-schema-v1.0.0.json"
+        }
+      },
+      "playableCards": {
+        "type": "array",
+        "description": "IDs of cards that can be played",
+        "items": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    }
+  },
+  "events": {
+    "emitted": [
+      {
+        "name": "cardSelected",
+        "description": "Emitted when a card is selected",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "cardId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      {
+        "name": "cardDeselected",
+        "description": "Emitted when a card is deselected",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "cardId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      {
+        "name": "playRequested",
+        "description": "Emitted when play button is clicked",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "cardId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      }
+    ]
+  },
+  "children": [
+    {
+      "name": "Card",
+      "required": true,
+      "multiple": true,
+      "description": "Individual card component"
+    },
+    {
+      "name": "PlayButton",
+      "required": true,
+      "description": "Button to play selected card"
+    },
+    {
+      "name": "SortControls",
+      "required": false,
+      "description": "Controls for sorting hand"
+    }
+  ],
+  "behavior": {
+    "cardSelection": {
+      "description": "Card selection behavior",
+      "rules": [
+        "Only one card can be selected at a time",
+        "Clicking selected card deselects it",
+        "Clicking different card selects it and deselects previous",
+        "Selection disabled when not player's turn",
+        "Selection disabled when hand is disabled"
+      ]
+    },
+    "cardPlayability": {
+      "description": "Rules for determining if a card can be played",
+      "rules": [
+        "Card must match suit or rank of top card",
+        "If current suit is set (by 8), must match that suit",
+        "8s can always be played",
+        "Aces, Queens have special effects but follow matching rules"
+      ]
+    },
+    "sorting": {
+      "description": "Card sorting behavior",
+      "algorithms": {
+        "suit": "Group by suit (hearts, diamonds, clubs, spades), then by rank within suit",
+        "rank": "Group by rank (A, 2-10, J, Q, K), then by suit within rank",
+        "none": "Maintain order as received from server"
+      }
+    }
+  },
+  "accessibility": {
+    "requirements": [
+      "Each card has unique aria-label with rank and suit",
+      "Selected card has aria-selected=true",
+      "Playable cards have aria-describedby pointing to hint",
+      "Keyboard navigation with arrow keys",
+      "Enter/Space to select card",
+      "Tab to play button when card selected",
+      "Screen reader announces card count",
+      "High contrast mode support for selection"
+    ],
+    "roles": {
+      "container": "list",
+      "card": "listitem button",
+      "playButton": "button"
+    },
+    "keyboardShortcuts": [
+      {
+        "key": "ArrowLeft",
+        "action": "Select previous card"
+      },
+      {
+        "key": "ArrowRight",
+        "action": "Select next card"
+      },
+      {
+        "key": "Enter",
+        "action": "Toggle card selection"
+      },
+      {
+        "key": "Space",
+        "action": "Toggle card selection"
+      },
+      {
+        "key": "P",
+        "action": "Play selected card (when available)"
+      }
+    ]
+  },
+  "styling": {
+    "cssClasses": [
+      "player-hand",
+      "player-hand__card",
+      "player-hand__card--selected",
+      "player-hand__card--playable",
+      "player-hand__card--disabled",
+      "player-hand__play-button",
+      "player-hand__sort-controls"
+    ],
+    "cssVariables": [
+      "--card-width",
+      "--card-height",
+      "--card-spacing",
+      "--selected-offset",
+      "--hover-offset",
+      "--transition-duration"
+    ],
+    "animations": [
+      {
+        "name": "card-select",
+        "duration": "200ms",
+        "easing": "ease-out"
+      },
+      {
+        "name": "card-hover",
+        "duration": "150ms",
+        "easing": "ease-in-out"
+      },
+      {
+        "name": "card-sort",
+        "duration": "300ms",
+        "easing": "ease-in-out"
+      }
+    ]
+  },
+  "performance": {
+    "requirements": [
+      "Render time < 50ms for up to 20 cards",
+      "Selection response < 16ms",
+      "Smooth 60fps animations",
+      "Memory usage < 10MB"
+    ],
+    "optimizations": [
+      "React.memo for Card components",
+      "useMemo for sorted cards calculation",
+      "useMemo for playable cards calculation",
+      "useCallback for event handlers",
+      "CSS transforms for animations (not layout properties)"
+    ]
+  },
+  "validation": {
+    "props": [
+      "cards array must not exceed 52 items",
+      "selectedCardId must exist in cards array if provided",
+      "topCard must be valid card object if provided",
+      "currentSuit must be valid suit if provided"
+    ],
+    "state": [
+      "playableCards must be subset of cards",
+      "sortedCards must contain same cards as props.cards"
+    ]
+  },
+  "testing": {
+    "unit": [
+      "Renders correct number of cards",
+      "Highlights selected card",
+      "Calls onCardSelect when card clicked",
+      "Disables selection when not player's turn",
+      "Correctly identifies playable cards",
+      "Sorts cards according to sortBy prop",
+      "Shows play button only when card selected",
+      "Disables play button for unplayable cards"
+    ],
+    "integration": [
+      "Card selection updates parent state",
+      "Play button triggers card play",
+      "Keyboard navigation works correctly",
+      "Animations complete smoothly"
+    ],
+    "visual": [
+      "Cards display correctly in all states",
+      "Selection highlight is visible",
+      "Playable indicator is clear",
+      "Responsive layout works on all screen sizes"
+    ]
+  },
+  "diagrams": {
+    "state-machine": "../diagrams/rendered/playerhand-state-machine.html",
+    "interaction": "../diagrams/rendered/playerhand-interaction.html"
+  },
+  "diagram-sources": {
+    "state-machine": "../diagrams/source/playerhand-state-machine.mmd",
+    "interaction": "../diagrams/source/playerhand-interaction.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-005", "US-006", "US-027"],
+    "requirements": ["REQ-UI-003", "REQ-UI-004", "REQ-ACCESS-001"]
+  }
+}

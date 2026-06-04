@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/schemas/card-v1.0.0.json",
+  "title": "Card",
+  "description": "Represents a playing card in the Digital Mao game",
+  "type": "object",
+  "required": ["id", "suit", "rank"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the card instance",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    },
+    "suit": {
+      "type": "string",
+      "description": "The suit of the card",
+      "enum": ["hearts", "diamonds", "clubs", "spades"],
+      "examples": ["hearts"]
+    },
+    "rank": {
+      "type": "string",
+      "description": "The rank of the card",
+      "enum": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"],
+      "examples": ["A", "8", "Q"]
+    },
+    "displayName": {
+      "type": "string",
+      "description": "Human-readable card name",
+      "pattern": "^(A|[2-9]|10|J|Q|K) of (hearts|diamonds|clubs|spades)$",
+      "examples": ["8 of hearts", "Q of spades"]
+    },
+    "isSpecial": {
+      "type": "boolean",
+      "description": "Whether this card has special effects (8=suit change, A=reverse, Q=skip)",
+      "default": false
+    },
+    "specialEffect": {
+      "type": "string",
+      "description": "The special effect this card triggers",
+      "enum": ["suit_change", "reverse_direction", "skip_next", "none"],
+      "examples": ["suit_change"]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "suit": "hearts",
+      "rank": "8",
+      "displayName": "8 of hearts",
+      "isSpecial": true,
+      "specialEffect": "suit_change"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "suit": "spades",
+      "rank": "Q",
+      "displayName": "Q of spades",
+      "isSpecial": true,
+      "specialEffect": "skip_next"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "suit": "diamonds",
+      "rank": "5",
+      "displayName": "5 of diamonds",
+      "isSpecial": false,
+      "specialEffect": "none"
+    }
+  ],
+  "x-diagrams": {
+    "domain-model": "../diagrams/rendered/domain-model.html"
+  },
+  "x-diagram-sources": {
+    "domain-model": "../diagrams/source/domain-model.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-005", "US-006", "US-008"],
+    "requirements": ["REQ-GAME-001", "REQ-GAME-002"]
+  }
+}

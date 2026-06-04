@@ -1,0 +1,306 @@
+asyncapi: 2.6.0
+info:
+  title: Digital Mao - Chat Events
+  version: 1.0.0
+  description: |
+    Event-driven communication for chat messages including player messages,
+    system notifications, and judge feedback. Real-time chat synchronization via WebSocket.
+  contact:
+    name: Digital Mao API Support
+    email: api@digital-mao.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  x-diagrams:
+    sequence: ../diagrams/rendered/sequences/chat-flow.html
+  x-diagram-sources:
+    sequence: ../diagrams/source/sequences/chat-flow.mmd
+
+servers:
+  production:
+    url: wss://events.digital-mao.com
+    protocol: wss
+    description: Production WebSocket server
+  staging:
+    url: wss://staging-events.digital-mao.com
+    protocol: wss
+    description: Staging WebSocket server
+  development:
+    url: ws://localhost:3002
+    protocol: ws
+    description: Local development WebSocket server
+
+channels:
+  game/{gameId}/chat:
+    description: Chat message events
+    parameters:
+      gameId:
+        description: Unique game identifier
+        schema:
+          type: string
+          format: uuid
+    publish:
+      summary: Send a chat message
+      operationId: sendChatMessage
+      message:
+        $ref: '#/components/messages/ChatMessageSent'
+      x-traceability:
+        user-stories: [US-011]
+    subscribe:
+      summary: Receive chat messages
+      operationId: onChatMessage
+      message:
+        oneOf:
+          - $ref: '#/components/messages/ChatMessageReceived'
+          - $ref: '#/components/messages/SystemMessage'
+          - $ref: '#/components/messages/JudgeMessage'
+          - $ref: '#/components/messages/PenaltyMessage'
+      x-traceability:
+        user-stories: [US-012, US-013]
+
+  game/{gameId}/chat/typing:
+    description: Typing indicator events
+    parameters:
+      gameId:
+        description: Unique game identifier
+        schema:
+          type: string
+          format: uuid
+    publish:
+      summary: Indicate typing status
+      operationId: sendTypingIndicator
+      message:
+        $ref: '#/components/messages/TypingIndicator'
+    subscribe:
+      summary: Receive typing indicators
+      operationId: onTypingIndicator
+      message:
+        $ref: '#/components/messages/TypingIndicator'
+
+components:
+  messages:
+    ChatMessageSent:
+      name: chat.message.sent
+      title: Chat Message Sent
+      summary: A player is sending a chat message
+      contentType: application/json
+      payload:
+        type: object
+        required: [gameId, senderId, content]
+        properties:
+          gameId:
+            type: string
+            format: uuid
+          senderId:
+            type: string
+            format: uuid
+          content:
+            type: string
+            minLength: 1
+            maxLength: 500
+          isSpectator:
+            type: boolean
+            default: false
+
+    ChatMessageReceived:
+      name: chat.message.received
+      title: Chat Message Received
+      summary: A chat message from a player
+      contentType: application/json
+      payload:
+        type: object
+        required: [messageId, timestamp, gameId, senderId, senderName, content, type]
+        properties:
+          messageId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          senderId:
+            type: string
+            format: uuid
+          senderName:
+            type: string
+          content:
+            type: string
+          type:
+            type: string
+            enum: [player]
+          isSpectator:
+            type: boolean
+            default: false
+          isEdited:
+            type: boolean
+            default: false
+          editedAt:
+            type: string
+            format: date-time
+
+    SystemMessage:
+      name: chat.system.message
+      title: System Message
+      summary: A system-generated message
+      contentType: application/json
+      payload:
+        type: object
+        required: [messageId, timestamp, gameId, content, type, eventType]
+        properties:
+          messageId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          content:
+            type: string
+            description: Human-readable system message
+          type:
+            type: string
+            enum: [system]
+          eventType:
+            type: string
+            enum: [player_joined, player_left, game_started, round_ended, rule_added]
+            description: Type of system event
+          metadata:
+            type: object
+            description: Additional event metadata
+            properties:
+              targetPlayerId:
+                type: string
+                format: uuid
+              targetPlayerName:
+                type: string
+              ruleId:
+                type: string
+                format: uuid
+
+    JudgeMessage:
+      name: chat.judge.message
+      title: Judge Message
+      summary: A cryptic message from the judge
+      contentType: application/json
+      payload:
+        type: object
+        required: [messageId, timestamp, gameId, content, type, crypticLevel]
+        properties:
+          messageId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          content:
+            type: string
+            description: Cryptic hint about rule violation
+          type:
+            type: string
+            enum: [judge]
+          crypticLevel:
+            type: integer
+            minimum: 1
+            maximum: 5
+            description: How cryptic the message is (1=obvious, 5=very cryptic)
+          metadata:
+            type: object
+            properties:
+              targetPlayerId:
+                type: string
+                format: uuid
+                description: Player being addressed
+              ruleId:
+                type: string
+                format: uuid
+                description: Rule that triggered the message
+              penaltyId:
+                type: string
+                format: uuid
+                description: Associated penalty if applicable
+
+    PenaltyMessage:
+      name: chat.penalty.message
+      title: Penalty Message
+      summary: A message announcing a penalty
+      contentType: application/json
+      payload:
+        type: object
+        required: [messageId, timestamp, gameId, content, type, penaltyDetails]
+        properties:
+          messageId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          content:
+            type: string
+            description: Penalty announcement message
+          type:
+            type: string
+            enum: [penalty]
+          penaltyDetails:
+            type: object
+            required: [playerId, cardCount]
+            properties:
+              playerId:
+                type: string
+                format: uuid
+              playerName:
+                type: string
+              cardCount:
+                type: integer
+                minimum: 1
+              ruleId:
+                type: string
+                format: uuid
+              severity:
+                type: string
+                enum: [minor, moderate, major]
+
+    TypingIndicator:
+      name: chat.typing
+      title: Typing Indicator
+      summary: A player is typing
+      contentType: application/json
+      payload:
+        type: object
+        required: [gameId, playerId, isTyping]
+        properties:
+          gameId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          playerName:
+            type: string
+          isTyping:
+            type: boolean
+          timestamp:
+            type: string
+            format: date-time
+
+  schemas:
+    ChatMessage:
+      type: object
+      description: Complete chat message
+      allOf:
+        - $ref: 'chat-message-schema-v1.0.0.json'
+
+x-traceability:
+  user-stories: [US-011, US-012, US-013]
+  requirements: [REQ-CHAT-001, REQ-CHAT-002, REQ-REALTIME-002]
+
+# Made with Bob

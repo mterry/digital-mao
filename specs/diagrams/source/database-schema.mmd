@@ -1,0 +1,148 @@
+erDiagram
+    GAMES ||--o{ PLAYERS : has
+    GAMES ||--o{ GAME_ACTIONS : records
+    GAMES ||--o{ CHAT_MESSAGES : contains
+    GAMES ||--o{ RULES : has
+    
+    PLAYERS ||--o{ PLAYER_CARDS : holds
+    PLAYERS ||--o{ CHAT_MESSAGES : sends
+    PLAYERS ||--o{ GAME_ACTIONS : performs
+    PLAYERS ||--o{ ENFORCEMENT_CASES : receives
+    
+    RULES ||--o| COMPILED_RULES : compiles_to
+    RULES ||--o{ ENFORCEMENT_CASES : enforces
+    
+    COMPILED_RULES ||--o{ ENFORCEMENT_CASES : generates
+    
+    GAMES {
+        uuid id PK
+        varchar name
+        enum status
+        uuid host_id FK
+        jsonb settings
+        timestamp created_at
+        timestamp started_at
+        timestamp ended_at
+        timestamp last_activity_at
+    }
+    
+    PLAYERS {
+        uuid id PK
+        uuid game_id FK
+        varchar name
+        enum status
+        int card_count
+        boolean is_host
+        boolean is_current_turn
+        boolean is_ready
+        boolean has_won
+        int penalty_count
+        jsonb statistics
+        timestamp joined_at
+    }
+    
+    PLAYER_CARDS {
+        uuid id PK
+        uuid player_id FK
+        uuid game_id FK
+        enum suit
+        enum rank
+        int position
+        timestamp drawn_at
+    }
+    
+    DECK_CARDS {
+        uuid id PK
+        uuid game_id FK
+        enum suit
+        enum rank
+        int position
+        timestamp created_at
+    }
+    
+    DISCARD_PILE {
+        uuid id PK
+        uuid game_id FK
+        enum suit
+        enum rank
+        int position
+        timestamp played_at
+    }
+    
+    RULES {
+        uuid id PK
+        uuid game_id FK
+        text description
+        uuid creator_id FK
+        varchar creator_name
+        enum status
+        int priority
+        enum category
+        uuid compiled_rule_id FK
+        jsonb feedback
+        jsonb enforcement_stats
+        timestamp created_at
+        timestamp compiled_at
+        timestamp activated_at
+    }
+    
+    COMPILED_RULES {
+        uuid id PK
+        uuid original_rule_id FK
+        jsonb triggers
+        jsonb conditions
+        jsonb actions
+        jsonb penalties
+        float confidence
+        jsonb ambiguities
+        jsonb examples
+        varchar compiler_version
+        timestamp compiled_at
+    }
+    
+    ENFORCEMENT_CASES {
+        uuid id PK
+        uuid game_id FK
+        uuid rule_id FK
+        uuid compiled_rule_id FK
+        uuid player_id FK
+        jsonb action
+        jsonb context
+        jsonb decision
+        int processing_time_ms
+        jsonb llm_metadata
+        jsonb feedback
+        boolean is_ambiguous
+        timestamp timestamp
+    }
+    
+    CHAT_MESSAGES {
+        uuid id PK
+        uuid game_id FK
+        enum type
+        text content
+        uuid sender_id FK
+        varchar sender_name
+        boolean is_spectator
+        jsonb metadata
+        boolean is_edited
+        timestamp timestamp
+        timestamp edited_at
+    }
+    
+    GAME_ACTIONS {
+        uuid id PK
+        uuid game_id FK
+        enum type
+        uuid player_id FK
+        jsonb details
+        timestamp timestamp
+    }
+    
+    SPECTATORS {
+        uuid id PK
+        uuid game_id FK
+        uuid user_id
+        varchar name
+        timestamp joined_at
+    }

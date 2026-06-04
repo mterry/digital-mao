@@ -1,0 +1,187 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/schemas/player-v1.0.0.json",
+  "title": "Player",
+  "description": "Represents a player in the Digital Mao game",
+  "type": "object",
+  "required": ["id", "name", "status", "hand", "cardCount"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the player",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Player's display name",
+      "minLength": 1,
+      "maxLength": 50,
+      "pattern": "^[a-zA-Z0-9_-]+$",
+      "examples": ["Alice", "Bob_123", "Player-1"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Current player status",
+      "enum": ["active", "disconnected", "spectating", "waiting"],
+      "examples": ["active"]
+    },
+    "hand": {
+      "type": "array",
+      "description": "Cards currently in player's hand (only visible to player)",
+      "items": {
+        "$ref": "card-schema-v1.0.0.json"
+      },
+      "minItems": 0,
+      "maxItems": 52,
+      "examples": [[]]
+    },
+    "cardCount": {
+      "type": "integer",
+      "description": "Number of cards in hand (visible to all players)",
+      "minimum": 0,
+      "maximum": 52,
+      "examples": [7, 0, 15]
+    },
+    "isHost": {
+      "type": "boolean",
+      "description": "Whether this player is the game host",
+      "default": false
+    },
+    "isCurrentTurn": {
+      "type": "boolean",
+      "description": "Whether it's currently this player's turn",
+      "default": false
+    },
+    "isReady": {
+      "type": "boolean",
+      "description": "Whether player is ready to start (in lobby)",
+      "default": false
+    },
+    "hasWon": {
+      "type": "boolean",
+      "description": "Whether player has won the current round",
+      "default": false
+    },
+    "penaltyCount": {
+      "type": "integer",
+      "description": "Total number of penalties received this game",
+      "minimum": 0,
+      "default": 0,
+      "examples": [0, 3, 12]
+    },
+    "rulesCreated": {
+      "type": "array",
+      "description": "IDs of rules this player has created",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "default": [],
+      "examples": [["550e8400-e29b-41d4-a716-446655440010"]]
+    },
+    "discoveredRules": {
+      "type": "array",
+      "description": "IDs of rules this player has discovered through consistent compliance",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "default": [],
+      "examples": [["550e8400-e29b-41d4-a716-446655440011"]]
+    },
+    "connectionStatus": {
+      "type": "object",
+      "description": "Player's connection details",
+      "properties": {
+        "connected": {
+          "type": "boolean",
+          "description": "Whether player is currently connected"
+        },
+        "lastSeen": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp of last activity"
+        },
+        "reconnectAttempts": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of reconnection attempts"
+        }
+      },
+      "required": ["connected", "lastSeen"]
+    },
+    "statistics": {
+      "type": "object",
+      "description": "Player's game statistics",
+      "properties": {
+        "cardsPlayed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total cards played this game"
+        },
+        "cardsDrawn": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total cards drawn this game"
+        },
+        "turnsPlayed": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total turns taken this game"
+        },
+        "penaltiesReceived": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Total penalties received this game"
+        }
+      },
+      "default": {
+        "cardsPlayed": 0,
+        "cardsDrawn": 0,
+        "turnsPlayed": 0,
+        "penaltiesReceived": 0
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Alice",
+      "status": "active",
+      "hand": [],
+      "cardCount": 7,
+      "isHost": true,
+      "isCurrentTurn": true,
+      "isReady": true,
+      "hasWon": false,
+      "penaltyCount": 2,
+      "rulesCreated": ["550e8400-e29b-41d4-a716-446655440010"],
+      "discoveredRules": ["550e8400-e29b-41d4-a716-446655440011"],
+      "connectionStatus": {
+        "connected": true,
+        "lastSeen": "2026-06-01T15:50:00Z",
+        "reconnectAttempts": 0
+      },
+      "statistics": {
+        "cardsPlayed": 15,
+        "cardsDrawn": 8,
+        "turnsPlayed": 23,
+        "penaltiesReceived": 2
+      }
+    }
+  ],
+  "x-diagrams": {
+    "domain-model": "../diagrams/rendered/domain-model.html",
+    "state-machine": "../diagrams/rendered/game-state-machine.html"
+  },
+  "x-diagram-sources": {
+    "domain-model": "../diagrams/source/domain-model.mmd",
+    "state-machine": "../diagrams/source/game-state-machine.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-003", "US-004", "US-005", "US-009", "US-010", "US-016", "US-024"],
+    "requirements": ["REQ-PLAYER-001", "REQ-PLAYER-002", "REQ-PLAYER-003"]
+  }
+}

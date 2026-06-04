@@ -1,0 +1,544 @@
+openapi: 3.1.0
+info:
+  title: Digital Mao - Game Management API
+  version: 1.0.0
+  description: |
+    REST API for managing Digital Mao games including creation, joining, and game state operations.
+    This API handles all game lifecycle operations from lobby to completion.
+  contact:
+    name: Digital Mao API Support
+    email: api@digital-mao.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  x-diagrams:
+    architecture: ../diagrams/rendered/c4-container.html
+    sequence-create: ../diagrams/rendered/sequences/game-start-flow.html
+    sequence-play: ../diagrams/rendered/sequences/card-play-flow.html
+  x-diagram-sources:
+    architecture: ../diagrams/source/c4-container.mmd
+    sequence-create: ../diagrams/source/sequences/game-start-flow.mmd
+    sequence-play: ../diagrams/source/sequences/card-play-flow.mmd
+
+servers:
+  - url: https://api.digital-mao.com/v1
+    description: Production server
+  - url: https://staging-api.digital-mao.com/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Local development server
+
+tags:
+  - name: games
+    description: Game lifecycle operations
+  - name: players
+    description: Player management within games
+  - name: actions
+    description: Game actions (play card, draw card, etc.)
+
+paths:
+  /games:
+    get:
+      tags: [games]
+      summary: List available games
+      description: Retrieve a list of games that are open for joining
+      operationId: listGames
+      parameters:
+        - name: status
+          in: query
+          description: Filter by game status
+          schema:
+            type: string
+            enum: [lobby, in_progress, game_ended]
+        - name: maxPlayers
+          in: query
+          description: Filter by maximum player count
+          schema:
+            type: integer
+            minimum: 2
+            maximum: 8
+        - name: isPrivate
+          in: query
+          description: Filter by privacy setting
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          description: Maximum number of games to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          description: Number of games to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of games retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  games:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/GameSummary'
+                  total:
+                    type: integer
+                    description: Total number of games matching filters
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-001]
+
+    post:
+      tags: [games]
+      summary: Create a new game
+      description: Create a new game with specified settings
+      operationId: createGame
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, hostId]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                  example: "Alice's Friday Game"
+                hostId:
+                  type: string
+                  format: uuid
+                  example: "550e8400-e29b-41d4-a716-446655440000"
+                settings:
+                  type: object
+                  properties:
+                    maxPlayers:
+                      type: integer
+                      minimum: 2
+                      maximum: 8
+                      default: 8
+                    isPrivate:
+                      type: boolean
+                      default: false
+                    allowSpectators:
+                      type: boolean
+                      default: true
+                    startingHandSize:
+                      type: integer
+                      minimum: 5
+                      maximum: 10
+                      default: 7
+      responses:
+        '201':
+          description: Game created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-002]
+
+  /games/{gameId}:
+    get:
+      tags: [games]
+      summary: Get game details
+      description: Retrieve complete details of a specific game
+      operationId: getGame
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Game details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-005]
+
+    delete:
+      tags: [games]
+      summary: Delete a game
+      description: Delete a game (host only, only in lobby status)
+      operationId: deleteGame
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '204':
+          description: Game deleted successfully
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /games/{gameId}/players:
+    post:
+      tags: [players]
+      summary: Join a game
+      description: Add a player to a game
+      operationId: joinGame
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId, playerName]
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                playerName:
+                  type: string
+                  minLength: 1
+                  maxLength: 50
+                  pattern: '^[a-zA-Z0-9_-]+$'
+                gameCode:
+                  type: string
+                  description: Required for private games
+                  pattern: '^[A-Z0-9]{6}$'
+      responses:
+        '200':
+          description: Player joined successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Game is full or already started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-003]
+
+  /games/{gameId}/players/{playerId}:
+    delete:
+      tags: [players]
+      summary: Leave a game
+      description: Remove a player from a game
+      operationId: leaveGame
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+        - $ref: '#/components/parameters/PlayerId'
+      responses:
+        '204':
+          description: Player left successfully
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-026]
+
+  /games/{gameId}/start:
+    post:
+      tags: [games]
+      summary: Start a game
+      description: Start a game from lobby (host only, requires 2+ players)
+      operationId: startGame
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Game started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+        '400':
+          description: Cannot start game (not enough players, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-004]
+
+  /games/{gameId}/actions/play-card:
+    post:
+      tags: [actions]
+      summary: Play a card
+      description: Play a card from player's hand
+      operationId: playCard
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId, cardId]
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                cardId:
+                  type: string
+                  format: uuid
+                selectedSuit:
+                  type: string
+                  enum: [hearts, diamonds, clubs, spades]
+                  description: Required when playing an 8
+      responses:
+        '200':
+          description: Card played successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  game:
+                    $ref: '#/components/schemas/Game'
+                  penalties:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Penalty'
+        '400':
+          description: Invalid card play
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not player's turn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-006, US-008]
+
+  /games/{gameId}/actions/draw-card:
+    post:
+      tags: [actions]
+      summary: Draw a card
+      description: Draw a card from the deck
+      operationId: drawCard
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId]
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Card drawn successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  game:
+                    $ref: '#/components/schemas/Game'
+                  card:
+                    $ref: '#/components/schemas/Card'
+        '403':
+          description: Not player's turn or has playable cards
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-007]
+
+components:
+  parameters:
+    GameId:
+      name: gameId
+      in: path
+      required: true
+      description: Unique game identifier
+      schema:
+        type: string
+        format: uuid
+
+    PlayerId:
+      name: playerId
+      in: path
+      required: true
+      description: Unique player identifier
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Game:
+      type: object
+      description: Complete game state
+      allOf:
+        - $ref: 'game-state-schema-v1.0.0.json'
+
+    GameSummary:
+      type: object
+      description: Summary of a game for listing
+      required: [id, name, status, playerCount, maxPlayers, hostName]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        status:
+          type: string
+          enum: [lobby, in_progress, game_ended]
+        playerCount:
+          type: integer
+          minimum: 0
+        maxPlayers:
+          type: integer
+          minimum: 2
+          maximum: 8
+        hostName:
+          type: string
+        isPrivate:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+
+    Card:
+      type: object
+      description: Playing card
+      allOf:
+        - $ref: 'card-schema-v1.0.0.json'
+
+    Penalty:
+      type: object
+      description: Penalty applied to a player
+      required: [playerId, cardCount, message]
+      properties:
+        playerId:
+          type: string
+          format: uuid
+        cardCount:
+          type: integer
+          minimum: 1
+        message:
+          type: string
+        ruleId:
+          type: string
+          format: uuid
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          example: "INVALID_CARD_PLAY"
+        message:
+          type: string
+          example: "Card does not match suit or rank"
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized - authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+x-traceability:
+  user-stories: [US-001, US-002, US-003, US-004, US-005, US-006, US-007, US-008, US-026]
+  requirements: [REQ-API-001, REQ-API-002, REQ-GAME-001, REQ-GAME-002]
+
+# Made with Bob

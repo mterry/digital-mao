@@ -1,0 +1,429 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/contracts/chatpanel-component-v1.0.0.json",
+  "title": "ChatPanel Component Contract",
+  "description": "Contract for the chat panel UI component that displays messages and handles chat input",
+  "version": "1.0.0",
+  "component": {
+    "name": "ChatPanel",
+    "type": "container",
+    "framework": "React",
+    "description": "Chat interface for player communication and judge messages"
+  },
+  "props": {
+    "type": "object",
+    "required": ["messages", "currentUserId", "onSendMessage"],
+    "properties": {
+      "messages": {
+        "type": "array",
+        "description": "Chat messages to display",
+        "items": {
+          "$ref": "../chat-message-schema-v1.0.0.json"
+        }
+      },
+      "currentUserId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "ID of current user"
+      },
+      "currentUserName": {
+        "type": "string",
+        "description": "Display name of current user"
+      },
+      "onSendMessage": {
+        "type": "function",
+        "description": "Callback when user sends a message",
+        "signature": "(content: string) => Promise<void>",
+        "parameters": [
+          {
+            "name": "content",
+            "type": "string",
+            "required": true,
+            "minLength": 1,
+            "maxLength": 500
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "isSpectator": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether current user is a spectator"
+      },
+      "maxMessages": {
+        "type": "integer",
+        "minimum": 50,
+        "maximum": 500,
+        "default": 100,
+        "description": "Maximum messages to keep in memory"
+      },
+      "showTimestamps": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether to show message timestamps"
+      },
+      "enableTypingIndicators": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether to show typing indicators"
+      },
+      "disabled": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether chat input is disabled"
+      }
+    }
+  },
+  "state": {
+    "type": "object",
+    "properties": {
+      "inputValue": {
+        "type": "string",
+        "default": "",
+        "description": "Current input field value"
+      },
+      "isSending": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether a message is being sent"
+      },
+      "isTyping": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether user is currently typing"
+      },
+      "typingUsers": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "userId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "userName": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Users currently typing"
+      },
+      "autoScroll": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether to auto-scroll to new messages"
+      },
+      "unreadCount": {
+        "type": "integer",
+        "minimum": 0,
+        "default": 0,
+        "description": "Number of unread messages"
+      }
+    }
+  },
+  "events": {
+    "emitted": [
+      {
+        "name": "messageSent",
+        "description": "Emitted when a message is successfully sent",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "content": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      },
+      {
+        "name": "typingStarted",
+        "description": "Emitted when user starts typing",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "userId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      {
+        "name": "typingStopped",
+        "description": "Emitted when user stops typing",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "userId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      {
+        "name": "scrolledToTop",
+        "description": "Emitted when user scrolls to top (for loading history)",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "oldestMessageId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      }
+    ],
+    "subscribed": [
+      {
+        "name": "chat.message.received",
+        "source": "WebSocket",
+        "description": "New chat message from any user"
+      },
+      {
+        "name": "chat.system.message",
+        "source": "WebSocket",
+        "description": "System message"
+      },
+      {
+        "name": "chat.judge.message",
+        "source": "WebSocket",
+        "description": "Judge message"
+      },
+      {
+        "name": "chat.typing",
+        "source": "WebSocket",
+        "description": "Typing indicator from other users"
+      }
+    ]
+  },
+  "children": [
+    {
+      "name": "MessageList",
+      "required": true,
+      "description": "Scrollable list of messages"
+    },
+    {
+      "name": "Message",
+      "required": true,
+      "multiple": true,
+      "description": "Individual message component"
+    },
+    {
+      "name": "ChatInput",
+      "required": true,
+      "description": "Text input for composing messages"
+    },
+    {
+      "name": "TypingIndicator",
+      "required": false,
+      "description": "Shows who is typing"
+    },
+    {
+      "name": "UnreadBadge",
+      "required": false,
+      "description": "Shows unread message count"
+    }
+  ],
+  "behavior": {
+    "messageDisplay": {
+      "description": "Message display behavior",
+      "rules": [
+        "Messages sorted chronologically (oldest first)",
+        "Player messages show sender name and avatar",
+        "System messages styled differently (gray, italic)",
+        "Judge messages highlighted (special color, icon)",
+        "Penalty messages prominently displayed",
+        "Own messages aligned right, others left",
+        "Timestamps shown on hover or always (based on prop)"
+      ]
+    },
+    "autoScroll": {
+      "description": "Auto-scroll behavior",
+      "rules": [
+        "Auto-scroll enabled by default",
+        "Disabled when user scrolls up manually",
+        "Re-enabled when user scrolls to bottom",
+        "Always scroll to bottom on own message sent",
+        "Show 'new messages' indicator when disabled"
+      ]
+    },
+    "typingIndicator": {
+      "description": "Typing indicator behavior",
+      "rules": [
+        "Send typing event after 500ms of typing",
+        "Send stop typing after 3s of no typing",
+        "Debounce typing events (max 1 per second)",
+        "Show up to 3 typing users",
+        "Clear typing indicator after 5s"
+      ]
+    },
+    "inputValidation": {
+      "description": "Input validation rules",
+      "rules": [
+        "Trim whitespace before sending",
+        "Reject empty messages",
+        "Enforce 500 character limit",
+        "Show character count near limit (>450 chars)",
+        "Disable send button for invalid input"
+      ]
+    }
+  },
+  "accessibility": {
+    "requirements": [
+      "Message list has role='log' and aria-live='polite'",
+      "Each message has aria-label with sender and content",
+      "Input has aria-label 'Chat message'",
+      "Send button has aria-label 'Send message'",
+      "Typing indicator announced to screen readers",
+      "Keyboard navigation (Tab, Shift+Tab)",
+      "Enter to send, Shift+Enter for newline",
+      "Focus management on new messages"
+    ],
+    "roles": {
+      "container": "region",
+      "messageList": "log",
+      "message": "article",
+      "input": "textbox",
+      "sendButton": "button"
+    },
+    "keyboardShortcuts": [
+      {
+        "key": "Enter",
+        "action": "Send message"
+      },
+      {
+        "key": "Shift+Enter",
+        "action": "Insert newline"
+      },
+      {
+        "key": "Escape",
+        "action": "Clear input"
+      },
+      {
+        "key": "Ctrl+Home",
+        "action": "Scroll to top"
+      },
+      {
+        "key": "Ctrl+End",
+        "action": "Scroll to bottom"
+      }
+    ]
+  },
+  "styling": {
+    "cssClasses": [
+      "chat-panel",
+      "chat-panel__message-list",
+      "chat-panel__message",
+      "chat-panel__message--player",
+      "chat-panel__message--system",
+      "chat-panel__message--judge",
+      "chat-panel__message--penalty",
+      "chat-panel__message--own",
+      "chat-panel__input",
+      "chat-panel__send-button",
+      "chat-panel__typing-indicator",
+      "chat-panel__unread-badge"
+    ],
+    "cssVariables": [
+      "--chat-bg-color",
+      "--message-bg-color",
+      "--own-message-bg-color",
+      "--system-message-color",
+      "--judge-message-color",
+      "--penalty-message-color",
+      "--input-bg-color",
+      "--max-height"
+    ],
+    "messageTypes": {
+      "player": {
+        "backgroundColor": "var(--message-bg-color)",
+        "textColor": "inherit"
+      },
+      "system": {
+        "backgroundColor": "transparent",
+        "textColor": "var(--system-message-color)",
+        "fontStyle": "italic"
+      },
+      "judge": {
+        "backgroundColor": "var(--judge-message-color)",
+        "textColor": "white",
+        "icon": "gavel"
+      },
+      "penalty": {
+        "backgroundColor": "var(--penalty-message-color)",
+        "textColor": "white",
+        "icon": "warning"
+      }
+    }
+  },
+  "performance": {
+    "requirements": [
+      "Render 100 messages < 100ms",
+      "Scroll performance 60fps",
+      "Message send latency < 50ms",
+      "Memory usage < 20MB for 500 messages"
+    ],
+    "optimizations": [
+      "Virtual scrolling for large message lists",
+      "React.memo for Message components",
+      "Debounced typing indicators",
+      "Throttled scroll event handlers",
+      "Message list windowing",
+      "Lazy load message history"
+    ]
+  },
+  "validation": {
+    "props": [
+      "messages array must be valid chat messages",
+      "currentUserId must be valid UUID",
+      "maxMessages must be between 50 and 500"
+    ],
+    "input": [
+      "Message content must be 1-500 characters after trim",
+      "No empty or whitespace-only messages",
+      "HTML/script tags sanitized"
+    ]
+  },
+  "testing": {
+    "unit": [
+      "Renders messages correctly",
+      "Displays different message types with correct styling",
+      "Calls onSendMessage with trimmed content",
+      "Validates input before sending",
+      "Shows typing indicators for other users",
+      "Auto-scrolls to new messages when enabled",
+      "Disables auto-scroll when user scrolls up",
+      "Shows unread count when not at bottom"
+    ],
+    "integration": [
+      "Receives WebSocket messages and displays them",
+      "Sends typing indicators correctly",
+      "Handles message send errors gracefully",
+      "Loads message history on scroll to top"
+    ],
+    "e2e": [
+      "Complete message send flow",
+      "Multi-user chat synchronization",
+      "Judge message display",
+      "Penalty message display"
+    ]
+  },
+  "diagrams": {
+    "state-flow": "../diagrams/rendered/chatpanel-state-flow.html",
+    "interaction": "../diagrams/rendered/chatpanel-interaction.html"
+  },
+  "diagram-sources": {
+    "state-flow": "../diagrams/source/chatpanel-state-flow.mmd",
+    "interaction": "../diagrams/source/chatpanel-interaction.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-011", "US-012", "US-013"],
+    "requirements": ["REQ-CHAT-001", "REQ-CHAT-002", "REQ-UI-005"]
+  }
+}

@@ -1,0 +1,558 @@
+asyncapi: 2.6.0
+info:
+  title: Digital Mao - Rule Events
+  version: 1.0.0
+  description: |
+    Event-driven communication for rule lifecycle events including proposal,
+    compilation, activation, and enforcement. Real-time rule updates via WebSocket.
+  contact:
+    name: Digital Mao API Support
+    email: api@digital-mao.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  x-diagrams:
+    sequence-compilation: ../diagrams/rendered/sequences/rule-compilation-flow.html
+    sequence-enforcement: ../diagrams/rendered/sequences/penalty-enforcement-flow.html
+  x-diagram-sources:
+    sequence-compilation: ../diagrams/source/sequences/rule-compilation-flow.mmd
+    sequence-enforcement: ../diagrams/source/sequences/penalty-enforcement-flow.mmd
+
+servers:
+  production:
+    url: wss://events.digital-mao.com
+    protocol: wss
+    description: Production WebSocket server
+  staging:
+    url: wss://staging-events.digital-mao.com
+    protocol: wss
+    description: Staging WebSocket server
+  development:
+    url: ws://localhost:3002
+    protocol: ws
+    description: Local development WebSocket server
+
+channels:
+  game/{gameId}/rules:
+    description: Rule lifecycle events
+    parameters:
+      gameId:
+        description: Unique game identifier
+        schema:
+          type: string
+          format: uuid
+    subscribe:
+      summary: Receive rule lifecycle events
+      operationId: onRuleEvent
+      message:
+        oneOf:
+          - $ref: '#/components/messages/RuleProposed'
+          - $ref: '#/components/messages/RuleCompiling'
+          - $ref: '#/components/messages/RuleCompiled'
+          - $ref: '#/components/messages/RuleApproved'
+          - $ref: '#/components/messages/RuleRejected'
+          - $ref: '#/components/messages/RuleActivated'
+          - $ref: '#/components/messages/RuleDeprecated'
+      x-traceability:
+        user-stories: [US-017, US-018, US-019, US-020]
+
+  game/{gameId}/rules/{ruleId}/compilation:
+    description: Rule compilation progress events
+    parameters:
+      gameId:
+        description: Unique game identifier
+        schema:
+          type: string
+          format: uuid
+      ruleId:
+        description: Unique rule identifier
+        schema:
+          type: string
+          format: uuid
+    subscribe:
+      summary: Receive compilation progress updates
+      operationId: onCompilationProgress
+      message:
+        oneOf:
+          - $ref: '#/components/messages/CompilationStarted'
+          - $ref: '#/components/messages/CompilationProgress'
+          - $ref: '#/components/messages/CompilationCompleted'
+          - $ref: '#/components/messages/CompilationFailed'
+      x-traceability:
+        user-stories: [US-017, US-018]
+
+  game/{gameId}/enforcement:
+    description: Rule enforcement events
+    parameters:
+      gameId:
+        description: Unique game identifier
+        schema:
+          type: string
+          format: uuid
+    subscribe:
+      summary: Receive enforcement events
+      operationId: onEnforcementEvent
+      message:
+        oneOf:
+          - $ref: '#/components/messages/RuleViolationDetected'
+          - $ref: '#/components/messages/EnforcementDecisionMade'
+          - $ref: '#/components/messages/EnforcementFeedbackReceived'
+      x-traceability:
+        user-stories: [US-021, US-022, US-023]
+
+components:
+  messages:
+    RuleProposed:
+      name: rule.proposed
+      title: Rule Proposed
+      summary: A new rule has been proposed
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, rule]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          rule:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              description:
+                type: string
+              creatorId:
+                type: string
+                format: uuid
+              creatorName:
+                type: string
+              status:
+                type: string
+                enum: [proposed]
+              priority:
+                type: integer
+              category:
+                type: string
+
+    RuleCompiling:
+      name: rule.compiling
+      title: Rule Compiling
+      summary: A rule is being compiled
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          estimatedTime:
+            type: integer
+            description: Estimated compilation time in seconds
+
+    RuleCompiled:
+      name: rule.compiled
+      title: Rule Compiled
+      summary: A rule has been successfully compiled
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId, compiledRuleId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          compiledRuleId:
+            type: string
+            format: uuid
+          confidence:
+            type: number
+            minimum: 0
+            maximum: 1
+          ambiguities:
+            type: array
+            items:
+              type: object
+              properties:
+                description:
+                  type: string
+                resolution:
+                  type: string
+          conflicts:
+            type: array
+            items:
+              type: object
+              properties:
+                conflictingRuleId:
+                  type: string
+                  format: uuid
+                conflictType:
+                  type: string
+                severity:
+                  type: string
+
+    RuleApproved:
+      name: rule.approved
+      title: Rule Approved
+      summary: A rule has been approved by its creator
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          creatorId:
+            type: string
+            format: uuid
+          feedback:
+            type: object
+            properties:
+              comments:
+                type: string
+
+    RuleRejected:
+      name: rule.rejected
+      title: Rule Rejected
+      summary: A rule has been rejected by its creator
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId, reason]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          creatorId:
+            type: string
+            format: uuid
+          reason:
+            type: string
+            description: Why the rule was rejected
+
+    RuleActivated:
+      name: rule.activated
+      title: Rule Activated
+      summary: A rule has been activated and is now being enforced
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          compiledRuleId:
+            type: string
+            format: uuid
+          priority:
+            type: integer
+          crypticAnnouncement:
+            type: string
+            description: Cryptic message announcing the new rule to players
+
+    RuleDeprecated:
+      name: rule.deprecated
+      title: Rule Deprecated
+      summary: A rule has been deprecated and is no longer enforced
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId, reason]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          reason:
+            type: string
+            description: Why the rule was deprecated
+
+    CompilationStarted:
+      name: compilation.started
+      title: Compilation Started
+      summary: Rule compilation has started
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId, compilationId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          compilationId:
+            type: string
+            format: uuid
+
+    CompilationProgress:
+      name: compilation.progress
+      title: Compilation Progress
+      summary: Compilation progress update
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId, compilationId, progress]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          compilationId:
+            type: string
+            format: uuid
+          progress:
+            type: integer
+            minimum: 0
+            maximum: 100
+            description: Compilation progress percentage
+          stage:
+            type: string
+            enum: [parsing, analyzing, generating, validating]
+
+    CompilationCompleted:
+      name: compilation.completed
+      title: Compilation Completed
+      summary: Rule compilation has completed successfully
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId, compilationId, compiledRuleId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          compilationId:
+            type: string
+            format: uuid
+          compiledRuleId:
+            type: string
+            format: uuid
+
+    CompilationFailed:
+      name: compilation.failed
+      title: Compilation Failed
+      summary: Rule compilation has failed
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId, compilationId, error]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          compilationId:
+            type: string
+            format: uuid
+          error:
+            type: object
+            properties:
+              code:
+                type: string
+              message:
+                type: string
+              details:
+                type: string
+
+    RuleViolationDetected:
+      name: enforcement.violation.detected
+      title: Rule Violation Detected
+      summary: A potential rule violation has been detected
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, ruleId, playerId]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          action:
+            type: object
+            description: The action that triggered detection
+
+    EnforcementDecisionMade:
+      name: enforcement.decision.made
+      title: Enforcement Decision Made
+      summary: A decision has been made on a rule violation
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, enforcementCaseId, decision]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          enforcementCaseId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          playerId:
+            type: string
+            format: uuid
+          decision:
+            type: object
+            required: [violated, confidence]
+            properties:
+              violated:
+                type: boolean
+              confidence:
+                type: number
+                minimum: 0
+                maximum: 1
+              penaltyApplied:
+                type: boolean
+              penaltyCards:
+                type: integer
+
+    EnforcementFeedbackReceived:
+      name: enforcement.feedback.received
+      title: Enforcement Feedback Received
+      summary: Feedback has been received on an enforcement decision
+      contentType: application/json
+      payload:
+        type: object
+        required: [eventId, timestamp, gameId, enforcementCaseId, correct]
+        properties:
+          eventId:
+            type: string
+            format: uuid
+          timestamp:
+            type: string
+            format: date-time
+          gameId:
+            type: string
+            format: uuid
+          enforcementCaseId:
+            type: string
+            format: uuid
+          ruleId:
+            type: string
+            format: uuid
+          correct:
+            type: boolean
+          feedbackProviderId:
+            type: string
+            format: uuid
+          comments:
+            type: string
+
+x-traceability:
+  user-stories: [US-017, US-018, US-019, US-020, US-021, US-022, US-023]
+  requirements: [REQ-RULE-001, REQ-RULE-002, REQ-RULE-003, REQ-RULE-004, REQ-JUDGE-001, REQ-REALTIME-003]
+
+# Made with Bob

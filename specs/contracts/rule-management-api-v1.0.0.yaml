@@ -1,0 +1,499 @@
+openapi: 3.1.0
+info:
+  title: Digital Mao - Rule Management API
+  version: 1.0.0
+  description: |
+    REST API for managing rules in Digital Mao including creation, compilation, and activation.
+    This API handles the complete rule lifecycle from natural language proposal to active enforcement.
+  contact:
+    name: Digital Mao API Support
+    email: api@digital-mao.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+  x-diagrams:
+    sequence-compilation: ../diagrams/rendered/sequences/rule-compilation-flow.html
+    state-machine: ../diagrams/rendered/rule-state-machine.html
+  x-diagram-sources:
+    sequence-compilation: ../diagrams/source/sequences/rule-compilation-flow.mmd
+    state-machine: ../diagrams/source/rule-state-machine.mmd
+
+servers:
+  - url: https://api.digital-mao.com/v1
+    description: Production server
+  - url: https://staging-api.digital-mao.com/v1
+    description: Staging server
+  - url: http://localhost:3000/v1
+    description: Local development server
+
+tags:
+  - name: rules
+    description: Rule lifecycle operations
+  - name: compilation
+    description: Rule compilation operations
+  - name: enforcement
+    description: Rule enforcement and statistics
+
+paths:
+  /games/{gameId}/rules:
+    get:
+      tags: [rules]
+      summary: List game rules
+      description: Retrieve all rules for a specific game
+      operationId: listRules
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+        - name: status
+          in: query
+          description: Filter by rule status
+          schema:
+            type: string
+            enum: [proposed, compiling, review, approved, active, rejected, deprecated]
+        - name: creatorId
+          in: query
+          description: Filter by rule creator
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Rules retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rules:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Rule'
+                  total:
+                    type: integer
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-020]
+
+    post:
+      tags: [rules]
+      summary: Propose a new rule
+      description: Submit a natural language rule proposal
+      operationId: proposeRule
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [description, creatorId]
+              properties:
+                description:
+                  type: string
+                  minLength: 10
+                  maxLength: 1000
+                  example: "Players must say 'Have a nice day' when playing a 7"
+                creatorId:
+                  type: string
+                  format: uuid
+                priority:
+                  type: integer
+                  minimum: 1
+                  maximum: 100
+                  default: 50
+                category:
+                  type: string
+                  enum: [speech, timing, card_play, turn_order, special_action, meta]
+      responses:
+        '201':
+          description: Rule proposed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          description: Player not authorized to create rules
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-017]
+
+  /games/{gameId}/rules/{ruleId}:
+    get:
+      tags: [rules]
+      summary: Get rule details
+      description: Retrieve complete details of a specific rule
+      operationId: getRule
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+        - $ref: '#/components/parameters/RuleId'
+      responses:
+        '200':
+          description: Rule details retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleWithCompilation'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+    patch:
+      tags: [rules]
+      summary: Update rule status
+      description: Update rule status (creator only for feedback, host for activation)
+      operationId: updateRule
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+        - $ref: '#/components/parameters/RuleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [approved, rejected, active, deprecated]
+                feedback:
+                  type: object
+                  properties:
+                    approved:
+                      type: boolean
+                    comments:
+                      type: string
+                      maxLength: 500
+                deprecatedReason:
+                  type: string
+                  maxLength: 200
+      responses:
+        '200':
+          description: Rule updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-018, US-019]
+
+  /games/{gameId}/rules/{ruleId}/compile:
+    post:
+      tags: [compilation]
+      summary: Compile a rule
+      description: Trigger LLM compilation of a natural language rule
+      operationId: compileRule
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+        - $ref: '#/components/parameters/RuleId'
+      responses:
+        '202':
+          description: Compilation started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  compilationId:
+                    type: string
+                    format: uuid
+                  status:
+                    type: string
+                    enum: [compiling]
+                  estimatedTime:
+                    type: integer
+                    description: Estimated compilation time in seconds
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-017]
+
+  /games/{gameId}/rules/{ruleId}/compiled:
+    get:
+      tags: [compilation]
+      summary: Get compiled rule
+      description: Retrieve the compiled version of a rule
+      operationId: getCompiledRule
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+        - $ref: '#/components/parameters/RuleId'
+      responses:
+        '200':
+          description: Compiled rule retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompiledRule'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-018]
+
+  /games/{gameId}/rules/{ruleId}/enforcement:
+    get:
+      tags: [enforcement]
+      summary: Get rule enforcement statistics
+      description: Retrieve enforcement statistics for a specific rule
+      operationId: getRuleEnforcement
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+        - $ref: '#/components/parameters/RuleId'
+        - name: limit
+          in: query
+          description: Maximum number of enforcement cases to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: Enforcement statistics retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statistics:
+                    type: object
+                    properties:
+                      totalViolations:
+                        type: integer
+                      totalPenalties:
+                        type: integer
+                      averageConfidence:
+                        type: number
+                      lastEnforced:
+                        type: string
+                        format: date-time
+                  recentCases:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/EnforcementCase'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-020, US-021]
+
+  /games/{gameId}/rules/{ruleId}/feedback:
+    post:
+      tags: [enforcement]
+      summary: Provide feedback on enforcement
+      description: Submit feedback on a specific enforcement decision
+      operationId: submitEnforcementFeedback
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+        - $ref: '#/components/parameters/RuleId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enforcementCaseId, correct]
+              properties:
+                enforcementCaseId:
+                  type: string
+                  format: uuid
+                correct:
+                  type: boolean
+                  description: Whether the enforcement decision was correct
+                comments:
+                  type: string
+                  maxLength: 500
+                  description: Explanation of why decision was incorrect
+      responses:
+        '200':
+          description: Feedback submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Feedback recorded and will be used to improve future judgments"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-023]
+
+  /games/{gameId}/rules/conflicts:
+    get:
+      tags: [rules]
+      summary: Check for rule conflicts
+      description: Analyze potential conflicts between active rules
+      operationId: checkRuleConflicts
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Conflict analysis completed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conflicts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        ruleId1:
+                          type: string
+                          format: uuid
+                        ruleId2:
+                          type: string
+                          format: uuid
+                        conflictType:
+                          type: string
+                          enum: [trigger_overlap, condition_contradiction, action_conflict]
+                        severity:
+                          type: string
+                          enum: [minor, moderate, major]
+                        description:
+                          type: string
+                        resolution:
+                          type: string
+                          description: How the conflict is resolved (by priority)
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    GameId:
+      name: gameId
+      in: path
+      required: true
+      description: Unique game identifier
+      schema:
+        type: string
+        format: uuid
+
+    RuleId:
+      name: ruleId
+      in: path
+      required: true
+      description: Unique rule identifier
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    Rule:
+      type: object
+      description: Natural language rule
+      allOf:
+        - $ref: 'rule-schema-v1.0.0.json'
+
+    CompiledRule:
+      type: object
+      description: Machine-executable compiled rule
+      allOf:
+        - $ref: 'compiled-rule-schema-v1.0.0.json'
+
+    RuleWithCompilation:
+      type: object
+      description: Rule with its compiled version
+      properties:
+        rule:
+          $ref: '#/components/schemas/Rule'
+        compiledRule:
+          $ref: '#/components/schemas/CompiledRule'
+
+    EnforcementCase:
+      type: object
+      description: Rule enforcement case
+      allOf:
+        - $ref: 'enforcement-case-schema-v1.0.0.json'
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Forbidden:
+      description: Forbidden - insufficient permissions
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+x-traceability:
+  user-stories: [US-017, US-018, US-019, US-020, US-021, US-023]
+  requirements: [REQ-API-003, REQ-RULE-001, REQ-RULE-002, REQ-RULE-003, REQ-RULE-004]
+
+# Made with Bob

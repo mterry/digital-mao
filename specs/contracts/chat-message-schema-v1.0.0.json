@@ -1,0 +1,163 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/schemas/chat-message-v1.0.0.json",
+  "title": "ChatMessage",
+  "description": "Represents a chat message in the Digital Mao game",
+  "type": "object",
+  "required": ["id", "type", "content", "timestamp", "gameId"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the message",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    },
+    "type": {
+      "type": "string",
+      "description": "Type of message",
+      "enum": ["player", "system", "judge", "penalty"],
+      "examples": ["player", "judge"]
+    },
+    "content": {
+      "type": "string",
+      "description": "The message content",
+      "minLength": 1,
+      "maxLength": 500,
+      "examples": ["Hello everyone!", "A curious observation about timing..."]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when message was sent",
+      "examples": ["2026-06-01T15:50:00Z"]
+    },
+    "gameId": {
+      "type": "string",
+      "description": "ID of the game this message belongs to",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440100"]
+    },
+    "senderId": {
+      "type": "string",
+      "description": "ID of the player who sent the message (null for system/judge)",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    },
+    "senderName": {
+      "type": "string",
+      "description": "Display name of the sender",
+      "minLength": 1,
+      "maxLength": 50,
+      "examples": ["Alice", "Judge", "System"]
+    },
+    "isSpectator": {
+      "type": "boolean",
+      "description": "Whether the sender is a spectator",
+      "default": false
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional message metadata",
+      "properties": {
+        "penaltyId": {
+          "type": "string",
+          "description": "ID of associated penalty (for penalty messages)",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "ruleId": {
+          "type": "string",
+          "description": "ID of associated rule (for judge messages)",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "targetPlayerId": {
+          "type": "string",
+          "description": "ID of player being addressed (for targeted messages)",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+        },
+        "eventType": {
+          "type": "string",
+          "description": "Type of game event (for system messages)",
+          "enum": ["player_joined", "player_left", "game_started", "round_ended", "rule_added"],
+          "examples": ["player_joined"]
+        },
+        "crypticLevel": {
+          "type": "integer",
+          "description": "How cryptic the judge message is (1=obvious, 5=very cryptic)",
+          "minimum": 1,
+          "maximum": 5,
+          "examples": [3]
+        }
+      }
+    },
+    "isEdited": {
+      "type": "boolean",
+      "description": "Whether the message has been edited",
+      "default": false
+    },
+    "editedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when message was last edited"
+    },
+    "isDeleted": {
+      "type": "boolean",
+      "description": "Whether the message has been deleted",
+      "default": false
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "type": "player",
+      "content": "Good luck everyone!",
+      "timestamp": "2026-06-01T15:50:00Z",
+      "gameId": "550e8400-e29b-41d4-a716-446655440100",
+      "senderId": "550e8400-e29b-41d4-a716-446655440001",
+      "senderName": "Alice",
+      "isSpectator": false,
+      "isEdited": false,
+      "isDeleted": false
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "type": "judge",
+      "content": "One might consider the significance of silence at certain moments...",
+      "timestamp": "2026-06-01T15:51:00Z",
+      "gameId": "550e8400-e29b-41d4-a716-446655440100",
+      "senderName": "Judge",
+      "metadata": {
+        "penaltyId": "550e8400-e29b-41d4-a716-446655440200",
+        "ruleId": "550e8400-e29b-41d4-a716-446655440300",
+        "targetPlayerId": "550e8400-e29b-41d4-a716-446655440001",
+        "crypticLevel": 4
+      },
+      "isEdited": false,
+      "isDeleted": false
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "type": "system",
+      "content": "Bob has joined the game",
+      "timestamp": "2026-06-01T15:52:00Z",
+      "gameId": "550e8400-e29b-41d4-a716-446655440100",
+      "senderName": "System",
+      "metadata": {
+        "eventType": "player_joined",
+        "targetPlayerId": "550e8400-e29b-41d4-a716-446655440002"
+      },
+      "isEdited": false,
+      "isDeleted": false
+    }
+  ],
+  "x-diagrams": {
+    "sequence": "../diagrams/rendered/sequences/chat-flow.html"
+  },
+  "x-diagram-sources": {
+    "sequence": "../diagrams/source/sequences/chat-flow.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-011", "US-012", "US-013"],
+    "requirements": ["REQ-CHAT-001", "REQ-CHAT-002"]
+  }
+}

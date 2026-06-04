@@ -1,0 +1,321 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/schemas/enforcement-case-v1.0.0.json",
+  "title": "EnforcementCase",
+  "description": "Represents a single rule enforcement evaluation by the LLM Judge",
+  "type": "object",
+  "required": ["id", "gameId", "ruleId", "playerId", "action", "decision", "timestamp"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the enforcement case",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    },
+    "gameId": {
+      "type": "string",
+      "description": "ID of the game where enforcement occurred",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440100"]
+    },
+    "ruleId": {
+      "type": "string",
+      "description": "ID of the rule being enforced",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440200"]
+    },
+    "compiledRuleId": {
+      "type": "string",
+      "description": "ID of the compiled rule version used",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440300"]
+    },
+    "playerId": {
+      "type": "string",
+      "description": "ID of the player being evaluated",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440001"]
+    },
+    "action": {
+      "type": "object",
+      "description": "The action that triggered rule evaluation",
+      "required": ["type", "timestamp"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Type of action",
+          "enum": ["card_played", "card_drawn", "chat_message", "turn_action", "special_action"],
+          "examples": ["card_played"]
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When the action occurred"
+        },
+        "details": {
+          "type": "object",
+          "description": "Action-specific details",
+          "properties": {
+            "cardId": {
+              "type": "string",
+              "description": "ID of card involved (if applicable)"
+            },
+            "cardRank": {
+              "type": "string",
+              "description": "Rank of card played"
+            },
+            "cardSuit": {
+              "type": "string",
+              "description": "Suit of card played"
+            },
+            "messageContent": {
+              "type": "string",
+              "description": "Chat message content (if applicable)"
+            },
+            "messageTimestamp": {
+              "type": "string",
+              "format": "date-time",
+              "description": "When message was sent"
+            }
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "description": "Game context at time of evaluation",
+      "properties": {
+        "recentActions": {
+          "type": "array",
+          "description": "Last 10 game actions for context",
+          "items": {
+            "type": "object"
+          },
+          "maxItems": 10
+        },
+        "gameState": {
+          "type": "object",
+          "description": "Relevant game state snapshot",
+          "properties": {
+            "currentPlayerId": {
+              "type": "string"
+            },
+            "turnNumber": {
+              "type": "integer"
+            },
+            "topCard": {
+              "type": "object"
+            }
+          }
+        },
+        "playerHistory": {
+          "type": "object",
+          "description": "Player's recent violation history",
+          "properties": {
+            "recentViolations": {
+              "type": "integer",
+              "description": "Violations in last 10 turns"
+            },
+            "sameRuleViolations": {
+              "type": "integer",
+              "description": "Violations of this specific rule"
+            }
+          }
+        }
+      }
+    },
+    "decision": {
+      "type": "object",
+      "description": "Judge's enforcement decision",
+      "required": ["violated", "confidence"],
+      "properties": {
+        "violated": {
+          "type": "boolean",
+          "description": "Whether rule was violated"
+        },
+        "confidence": {
+          "type": "number",
+          "description": "Confidence in decision (0-1)",
+          "minimum": 0,
+          "maximum": 1,
+          "examples": [0.95, 0.87, 0.62]
+        },
+        "reasoning": {
+          "type": "string",
+          "description": "Internal reasoning for decision (not shown to players)",
+          "maxLength": 1000
+        },
+        "penaltyApplied": {
+          "type": "boolean",
+          "description": "Whether penalty was applied",
+          "default": false
+        },
+        "penaltyCards": {
+          "type": "integer",
+          "description": "Number of penalty cards issued",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "crypticMessage": {
+          "type": "string",
+          "description": "Cryptic message sent to player",
+          "maxLength": 200
+        }
+      }
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When enforcement evaluation occurred",
+      "examples": ["2026-06-01T15:50:00Z"]
+    },
+    "processingTime": {
+      "type": "integer",
+      "description": "Time taken to evaluate in milliseconds",
+      "minimum": 0,
+      "examples": [150, 320, 89]
+    },
+    "llmMetadata": {
+      "type": "object",
+      "description": "Metadata about LLM processing",
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "LLM model used",
+          "examples": ["gpt-4", "claude-3-opus"]
+        },
+        "tokensUsed": {
+          "type": "integer",
+          "description": "Number of tokens consumed",
+          "minimum": 0
+        },
+        "temperature": {
+          "type": "number",
+          "description": "Temperature setting used",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "promptVersion": {
+          "type": "string",
+          "description": "Version of judge prompt used"
+        }
+      }
+    },
+    "feedback": {
+      "type": "object",
+      "description": "Feedback on this enforcement decision",
+      "properties": {
+        "creatorFeedback": {
+          "type": "object",
+          "description": "Feedback from rule creator",
+          "properties": {
+            "correct": {
+              "type": "boolean",
+              "description": "Whether creator agrees with decision"
+            },
+            "comments": {
+              "type": "string",
+              "description": "Creator's comments",
+              "maxLength": 500
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        },
+        "playerAppeal": {
+          "type": "object",
+          "description": "Player appeal of decision",
+          "properties": {
+            "appealed": {
+              "type": "boolean",
+              "description": "Whether player appealed"
+            },
+            "reason": {
+              "type": "string",
+              "description": "Reason for appeal",
+              "maxLength": 500
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        }
+      }
+    },
+    "isAmbiguous": {
+      "type": "boolean",
+      "description": "Whether this case was flagged as ambiguous",
+      "default": false
+    },
+    "similarCases": {
+      "type": "array",
+      "description": "IDs of similar past enforcement cases",
+      "items": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "default": []
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "gameId": "550e8400-e29b-41d4-a716-446655440100",
+      "ruleId": "550e8400-e29b-41d4-a716-446655440200",
+      "compiledRuleId": "550e8400-e29b-41d4-a716-446655440300",
+      "playerId": "550e8400-e29b-41d4-a716-446655440001",
+      "action": {
+        "type": "card_played",
+        "timestamp": "2026-06-01T15:50:00Z",
+        "details": {
+          "cardId": "550e8400-e29b-41d4-a716-446655440400",
+          "cardRank": "7",
+          "cardSuit": "hearts"
+        }
+      },
+      "context": {
+        "recentActions": [],
+        "gameState": {
+          "currentPlayerId": "550e8400-e29b-41d4-a716-446655440001",
+          "turnNumber": 15
+        },
+        "playerHistory": {
+          "recentViolations": 1,
+          "sameRuleViolations": 0
+        }
+      },
+      "decision": {
+        "violated": true,
+        "confidence": 0.95,
+        "reasoning": "Player played a 7 but did not say 'Have a nice day' within the 3-second window. No chat message matching the required pattern was detected.",
+        "penaltyApplied": true,
+        "penaltyCards": 1,
+        "crypticMessage": "One might consider the importance of proper farewells when dealing with sevens..."
+      },
+      "timestamp": "2026-06-01T15:50:01Z",
+      "processingTime": 150,
+      "llmMetadata": {
+        "model": "gpt-4",
+        "tokensUsed": 450,
+        "temperature": 0.3,
+        "promptVersion": "1.0.0"
+      },
+      "isAmbiguous": false,
+      "similarCases": []
+    }
+  ],
+  "x-diagrams": {
+    "sequence": "../diagrams/rendered/sequences/penalty-enforcement-flow.html"
+  },
+  "x-diagram-sources": {
+    "sequence": "../diagrams/source/sequences/penalty-enforcement-flow.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-009", "US-021", "US-022", "US-023"],
+    "requirements": ["REQ-JUDGE-003", "REQ-JUDGE-004", "REQ-PENALTY-001"]
+  }
+}

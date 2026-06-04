@@ -1,0 +1,452 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/contracts/ruleproposal-component-v1.0.0.json",
+  "title": "RuleProposal Component Contract",
+  "description": "Contract for the rule proposal UI component for creating and reviewing rules",
+  "version": "1.0.0",
+  "component": {
+    "name": "RuleProposal",
+    "type": "container",
+    "framework": "React",
+    "description": "Interface for proposing new rules and reviewing compiled rules"
+  },
+  "props": {
+    "type": "object",
+    "required": ["winnerId", "winnerName", "onSubmitRule", "onDeclineRule"],
+    "properties": {
+      "winnerId": {
+        "type": "string",
+        "format": "uuid",
+        "description": "ID of the player who won and can propose a rule"
+      },
+      "winnerName": {
+        "type": "string",
+        "description": "Display name of the winner"
+      },
+      "onSubmitRule": {
+        "type": "function",
+        "description": "Callback when rule is submitted",
+        "signature": "(description: string, priority: number, category: string) => Promise<void>",
+        "parameters": [
+          {
+            "name": "description",
+            "type": "string",
+            "required": true,
+            "minLength": 10,
+            "maxLength": 1000
+          },
+          {
+            "name": "priority",
+            "type": "number",
+            "required": true,
+            "minimum": 1,
+            "maximum": 100
+          },
+          {
+            "name": "category",
+            "type": "string",
+            "required": true,
+            "enum": ["speech", "timing", "card_play", "turn_order", "special_action", "meta"]
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "onDeclineRule": {
+        "type": "function",
+        "description": "Callback when winner declines to propose a rule",
+        "signature": "() => void",
+        "parameters": [],
+        "returns": "void"
+      },
+      "onApproveCompilation": {
+        "type": "function",
+        "description": "Callback when compiled rule is approved",
+        "signature": "(ruleId: string, feedback: string) => Promise<void>",
+        "parameters": [
+          {
+            "name": "ruleId",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "feedback",
+            "type": "string",
+            "required": false
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "onRejectCompilation": {
+        "type": "function",
+        "description": "Callback when compiled rule is rejected",
+        "signature": "(ruleId: string, reason: string) => Promise<void>",
+        "parameters": [
+          {
+            "name": "ruleId",
+            "type": "string",
+            "required": true
+          },
+          {
+            "name": "reason",
+            "type": "string",
+            "required": true
+          }
+        ],
+        "returns": "Promise<void>"
+      },
+      "compiledRule": {
+        "type": "object",
+        "description": "Compiled rule for review",
+        "$ref": "../compiled-rule-schema-v1.0.0.json"
+      },
+      "isCompiling": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether rule is currently being compiled"
+      },
+      "compilationProgress": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 100,
+        "description": "Compilation progress percentage"
+      }
+    }
+  },
+  "state": {
+    "type": "object",
+    "properties": {
+      "step": {
+        "type": "string",
+        "enum": ["propose", "compiling", "review", "complete"],
+        "default": "propose",
+        "description": "Current step in rule creation flow"
+      },
+      "ruleDescription": {
+        "type": "string",
+        "default": "",
+        "description": "Rule description being composed"
+      },
+      "rulePriority": {
+        "type": "integer",
+        "minimum": 1,
+        "maximum": 100,
+        "default": 50,
+        "description": "Selected rule priority"
+      },
+      "ruleCategory": {
+        "type": "string",
+        "enum": ["speech", "timing", "card_play", "turn_order", "special_action", "meta"],
+        "description": "Selected rule category"
+      },
+      "validationErrors": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Current validation errors"
+      },
+      "showExamples": {
+        "type": "boolean",
+        "default": false,
+        "description": "Whether to show example rules"
+      },
+      "reviewFeedback": {
+        "type": "string",
+        "default": "",
+        "description": "Feedback on compiled rule"
+      }
+    }
+  },
+  "events": {
+    "emitted": [
+      {
+        "name": "ruleProposed",
+        "description": "Emitted when rule is proposed",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "priority": {
+              "type": "integer"
+            },
+            "category": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "name": "ruleDeclined",
+        "description": "Emitted when winner declines to propose",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "winnerId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      {
+        "name": "compilationApproved",
+        "description": "Emitted when compiled rule is approved",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "ruleId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "feedback": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      {
+        "name": "compilationRejected",
+        "description": "Emitted when compiled rule is rejected",
+        "payload": {
+          "type": "object",
+          "properties": {
+            "ruleId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "reason": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    ],
+    "subscribed": [
+      {
+        "name": "rule.compiling",
+        "source": "WebSocket",
+        "description": "Rule compilation started"
+      },
+      {
+        "name": "compilation.progress",
+        "source": "WebSocket",
+        "description": "Compilation progress updates"
+      },
+      {
+        "name": "rule.compiled",
+        "source": "WebSocket",
+        "description": "Rule compilation completed"
+      },
+      {
+        "name": "compilation.failed",
+        "source": "WebSocket",
+        "description": "Rule compilation failed"
+      }
+    ]
+  },
+  "children": [
+    {
+      "name": "RuleDescriptionInput",
+      "required": true,
+      "description": "Text area for rule description"
+    },
+    {
+      "name": "PrioritySelector",
+      "required": true,
+      "description": "Slider or input for rule priority"
+    },
+    {
+      "name": "CategorySelector",
+      "required": true,
+      "description": "Dropdown for rule category"
+    },
+    {
+      "name": "ExampleRules",
+      "required": false,
+      "description": "Shows example rules for inspiration"
+    },
+    {
+      "name": "CompilationProgress",
+      "required": false,
+      "description": "Shows compilation progress"
+    },
+    {
+      "name": "CompiledRuleReview",
+      "required": false,
+      "description": "Displays compiled rule for review"
+    },
+    {
+      "name": "ConflictWarnings",
+      "required": false,
+      "description": "Shows potential rule conflicts"
+    }
+  ],
+  "behavior": {
+    "proposalFlow": {
+      "description": "Rule proposal workflow",
+      "steps": [
+        {
+          "step": "propose",
+          "description": "Winner enters rule description, priority, and category",
+          "actions": ["Enter description", "Select priority", "Select category", "Submit or Decline"]
+        },
+        {
+          "step": "compiling",
+          "description": "LLM compiles natural language into executable rule",
+          "actions": ["Show progress", "Display status updates"]
+        },
+        {
+          "step": "review",
+          "description": "Winner reviews compiled rule",
+          "actions": ["View triggers", "View conditions", "View actions", "View penalties", "Approve or Reject"]
+        },
+        {
+          "step": "complete",
+          "description": "Rule is activated or rejected",
+          "actions": ["Show confirmation", "Return to game"]
+        }
+      ]
+    },
+    "validation": {
+      "description": "Input validation rules",
+      "rules": [
+        "Description must be 10-1000 characters",
+        "Description must not be empty or whitespace only",
+        "Priority must be 1-100",
+        "Category must be selected",
+        "Show real-time character count",
+        "Disable submit if validation fails"
+      ]
+    },
+    "compilation": {
+      "description": "Compilation handling",
+      "rules": [
+        "Show loading state during compilation",
+        "Display progress updates if available",
+        "Handle compilation errors gracefully",
+        "Allow cancellation during compilation",
+        "Timeout after 30 seconds"
+      ]
+    },
+    "review": {
+      "description": "Compiled rule review",
+      "rules": [
+        "Display all rule components clearly",
+        "Highlight potential conflicts",
+        "Show example scenarios",
+        "Allow feedback comments",
+        "Require explicit approval or rejection"
+      ]
+    }
+  },
+  "accessibility": {
+    "requirements": [
+      "Form has proper labels and fieldsets",
+      "Description textarea has aria-label",
+      "Character count announced to screen readers",
+      "Priority slider has aria-valuemin, aria-valuemax, aria-valuenow",
+      "Category dropdown has aria-label",
+      "Submit/Decline buttons have clear labels",
+      "Compilation progress announced",
+      "Review section has proper heading structure",
+      "Keyboard navigation throughout"
+    ],
+    "roles": {
+      "container": "form",
+      "descriptionInput": "textbox",
+      "prioritySlider": "slider",
+      "categorySelect": "combobox",
+      "submitButton": "button",
+      "reviewSection": "region"
+    }
+  },
+  "styling": {
+    "cssClasses": [
+      "rule-proposal",
+      "rule-proposal__step",
+      "rule-proposal__description",
+      "rule-proposal__priority",
+      "rule-proposal__category",
+      "rule-proposal__examples",
+      "rule-proposal__progress",
+      "rule-proposal__review",
+      "rule-proposal__conflicts",
+      "rule-proposal__actions"
+    ],
+    "cssVariables": [
+      "--proposal-bg-color",
+      "--input-bg-color",
+      "--progress-color",
+      "--conflict-color",
+      "--success-color",
+      "--error-color"
+    ]
+  },
+  "performance": {
+    "requirements": [
+      "Initial render < 100ms",
+      "Input response < 16ms",
+      "Compilation updates < 50ms",
+      "Memory usage < 15MB"
+    ],
+    "optimizations": [
+      "Debounced validation",
+      "Memoized example rules",
+      "Lazy load review components",
+      "Optimistic UI updates"
+    ]
+  },
+  "validation": {
+    "props": [
+      "winnerId must be valid UUID",
+      "winnerName must not be empty",
+      "compiledRule must match schema if provided"
+    ],
+    "input": [
+      "Description 10-1000 characters",
+      "Priority 1-100",
+      "Category must be valid enum value",
+      "Feedback/reason not empty when required"
+    ]
+  },
+  "testing": {
+    "unit": [
+      "Renders proposal form correctly",
+      "Validates description length",
+      "Validates priority range",
+      "Requires category selection",
+      "Calls onSubmitRule with correct parameters",
+      "Calls onDeclineRule when declined",
+      "Shows compilation progress",
+      "Displays compiled rule for review",
+      "Calls onApproveCompilation when approved",
+      "Calls onRejectCompilation when rejected"
+    ],
+    "integration": [
+      "Complete proposal flow",
+      "Receives compilation progress updates",
+      "Handles compilation errors",
+      "Displays conflicts correctly"
+    ],
+    "e2e": [
+      "End-to-end rule creation",
+      "Rule approval flow",
+      "Rule rejection flow",
+      "Decline to propose flow"
+    ]
+  },
+  "diagrams": {
+    "workflow": "../diagrams/rendered/ruleproposal-workflow.html",
+    "state-machine": "../diagrams/rendered/ruleproposal-state-machine.html"
+  },
+  "diagram-sources": {
+    "workflow": "../diagrams/source/ruleproposal-workflow.mmd",
+    "state-machine": "../diagrams/source/ruleproposal-state-machine.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-017", "US-018", "US-019"],
+    "requirements": ["REQ-RULE-001", "REQ-RULE-002", "REQ-UI-006"]
+  }
+}

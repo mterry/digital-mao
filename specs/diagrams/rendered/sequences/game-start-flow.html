@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Start Flow</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Game Start Flow</h1>
+        <div class="mermaid">
+sequenceDiagram
+    participant Host as 👤 Host
+    participant P2 as 👤 Player 2
+    participant UI as ⚛️ Web App
+    participant GameAPI as 🎮 Game API
+    participant WS as 🔌 WebSocket
+    participant DB as 🗄️ Database
+    
+    Note over Host,DB: Game Creation and Start Flow
+    
+    Host->>UI: Click "Create Game"
+    UI->>Host: Show game creation form
+    
+    Host->>UI: Enter game name<br/>Set max players (8)<br/>Set privacy (public)
+    Host->>UI: Click "Create"
+    
+    UI->>GameAPI: POST /games<br/>{name, hostId, settings}
+    
+    GameAPI->>DB: Create game record<br/>(status: lobby)
+    GameAPI->>DB: Add host as first player
+    DB-->>GameAPI: Game created {gameId}
+    
+    GameAPI->>WS: Subscribe host to game channel
+    GameAPI-->>UI: 201 Created {game}
+    
+    UI->>Host: Navigate to game lobby<br/>Show game code for sharing
+    
+    Note over Host,DB: Other players join
+    
+    P2->>UI: Browse games or enter code
+    UI->>GameAPI: GET /games (list available)
+    GameAPI->>DB: Query open games
+    DB-->>GameAPI: Game list
+    GameAPI-->>UI: 200 OK {games}
+    
+    P2->>UI: Click "Join Game"
+    UI->>GameAPI: POST /games/{id}/players<br/>{playerId, playerName}
+    
+    GameAPI->>DB: Validate game not full
+    GameAPI->>DB: Add player to game
+    DB-->>GameAPI: Player added
+    
+    GameAPI->>WS: Publish player.joined event
+    GameAPI-->>UI: 200 OK {game}
+    
+    WS-->>UI: player.joined event
+    UI->>Host: Show "Player 2 joined"
+    UI->>P2: Show lobby with all players
+    
+    Note over Host,P2: Players mark ready
+    
+    P2->>UI: Click "Ready"
+    UI->>GameAPI: PATCH /games/{id}/players/{playerId}<br/>{isReady: true}
+    
+    GameAPI->>DB: Update player ready status
+    GameAPI->>WS: Publish player.ready.changed event
+    WS-->>UI: Update ready indicators
+    
+    Note over Host,DB: Host starts game when ready
+    
+    Host->>UI: Click "Start Game"<br/>(requires 2+ players)
+    
+    UI->>GameAPI: POST /games/{id}/start
+    
+    GameAPI->>DB: Validate 2+ players
+    
+    alt Less than 2 players
+        GameAPI-->>UI: 400 Bad Request<br/>"Need at least 2 players"
+        UI->>Host: Show error message
+    else 2+ players ready
+        GameAPI->>DB: Update game status<br/>(status: starting)
+        
+        GameAPI->>GameAPI: Initialize deck<br/>(52 cards, shuffled)
+        
+        GameAPI->>GameAPI: Deal starting hands<br/>(7 cards each)
+        
+        GameAPI->>GameAPI: Place first card<br/>on discard pile
+        
+        GameAPI->>GameAPI: Determine starting player<br/>(random or host)
+        
+        GameAPI->>DB: Update game state<br/>(status: in_progress)
+        DB-->>GameAPI: Game started
+        
+        GameAPI->>WS: Publish game.started event<br/>{startingPlayerId, initialState}
+        
+        GameAPI-->>UI: 200 OK {game}
+        
+        WS-->>UI: game.started event
+        
+        UI->>Host: Navigate to game board<br/>Show hand and game state
+        UI->>P2: Navigate to game board<br/>Show hand and game state
+        
+        WS-->>UI: turn.changed event<br/>{currentPlayerId}
+        
+        UI->>UI: Highlight current player
+        UI->>UI: Enable actions for current player
+        
+        Note over Host,P2: Game is now in progress!
+    end
+        </div>
+        <div class="footer">
+            <p>Generated from Mermaid source diagram</p>
+            <p>Interactive diagram - you can zoom and pan</p>
+        </div>
+    </div>
+</body>
+</html>

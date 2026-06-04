@@ -1,0 +1,363 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/schemas/game-state-v1.0.0.json",
+  "title": "GameState",
+  "description": "Represents the complete state of a Digital Mao game",
+  "type": "object",
+  "required": ["id", "status", "players", "deck", "discardPile", "currentPlayerId", "turnNumber", "createdAt"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the game",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name for the game",
+      "minLength": 1,
+      "maxLength": 100,
+      "examples": ["Alice's Game", "Friday Night Mao"]
+    },
+    "status": {
+      "type": "string",
+      "description": "Current game status",
+      "enum": ["lobby", "starting", "in_progress", "paused", "round_ended", "game_ended"],
+      "examples": ["in_progress"]
+    },
+    "players": {
+      "type": "array",
+      "description": "All players in the game",
+      "items": {
+        "$ref": "player-schema-v1.0.0.json"
+      },
+      "minItems": 2,
+      "maxItems": 8
+    },
+    "spectators": {
+      "type": "array",
+      "description": "Players watching the game",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "joinedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "default": []
+    },
+    "hostId": {
+      "type": "string",
+      "description": "ID of the player hosting the game",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440001"]
+    },
+    "deck": {
+      "type": "object",
+      "description": "The draw pile",
+      "required": ["cards", "count"],
+      "properties": {
+        "cards": {
+          "type": "array",
+          "description": "Cards in the deck (hidden from players)",
+          "items": {
+            "$ref": "card-schema-v1.0.0.json"
+          }
+        },
+        "count": {
+          "type": "integer",
+          "description": "Number of cards in deck (visible to players)",
+          "minimum": 0,
+          "maximum": 52
+        }
+      }
+    },
+    "discardPile": {
+      "type": "object",
+      "description": "The discard pile",
+      "required": ["cards", "topCard"],
+      "properties": {
+        "cards": {
+          "type": "array",
+          "description": "All cards in discard pile",
+          "items": {
+            "$ref": "card-schema-v1.0.0.json"
+          }
+        },
+        "topCard": {
+          "description": "The top card of the discard pile (visible to all)",
+          "oneOf": [
+            {
+              "$ref": "card-schema-v1.0.0.json"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "currentPlayerId": {
+      "type": "string",
+      "description": "ID of player whose turn it is",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440001"]
+    },
+    "turnNumber": {
+      "type": "integer",
+      "description": "Current turn number",
+      "minimum": 0,
+      "examples": [0, 15, 42]
+    },
+    "turnDirection": {
+      "type": "string",
+      "description": "Direction of play",
+      "enum": ["clockwise", "counterclockwise"],
+      "default": "clockwise"
+    },
+    "currentSuit": {
+      "type": "string",
+      "description": "Current suit (if changed by an 8)",
+      "enum": ["hearts", "diamonds", "clubs", "spades", null],
+      "examples": ["hearts", null]
+    },
+    "rules": {
+      "type": "array",
+      "description": "Active rules in this game",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ruleId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "compiledRuleId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "activatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "default": []
+    },
+    "actionHistory": {
+      "type": "array",
+      "description": "Recent game actions for context",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": ["card_played", "card_drawn", "turn_started", "turn_ended", "penalty_applied", "rule_added"]
+          },
+          "playerId": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "timestamp": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "details": {
+            "type": "object"
+          }
+        }
+      },
+      "maxItems": 100,
+      "default": []
+    },
+    "settings": {
+      "type": "object",
+      "description": "Game configuration settings",
+      "properties": {
+        "maxPlayers": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 8,
+          "default": 8
+        },
+        "isPrivate": {
+          "type": "boolean",
+          "description": "Whether game is invite-only",
+          "default": false
+        },
+        "allowSpectators": {
+          "type": "boolean",
+          "default": true
+        },
+        "startingHandSize": {
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 10,
+          "default": 7
+        },
+        "penaltyMultiplier": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 2,
+          "default": 1,
+          "description": "Multiplier for penalty card counts"
+        },
+        "judgeStrictness": {
+          "type": "string",
+          "enum": ["lenient", "moderate", "strict"],
+          "default": "moderate"
+        }
+      },
+      "default": {
+        "maxPlayers": 8,
+        "isPrivate": false,
+        "allowSpectators": true,
+        "startingHandSize": 7,
+        "penaltyMultiplier": 1,
+        "judgeStrictness": "moderate"
+      }
+    },
+    "roundWinner": {
+      "type": "string",
+      "description": "ID of player who won the current round",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the game was created",
+      "examples": ["2026-06-01T15:00:00Z"]
+    },
+    "startedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the game started"
+    },
+    "endedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the game ended"
+    },
+    "lastActivityAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last activity timestamp",
+      "examples": ["2026-06-01T15:50:00Z"]
+    },
+    "statistics": {
+      "type": "object",
+      "description": "Game-wide statistics",
+      "properties": {
+        "totalTurns": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalCardsPlayed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalPenalties": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "totalRulesCreated": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "averageTurnTime": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Average turn time in seconds"
+        }
+      },
+      "default": {
+        "totalTurns": 0,
+        "totalCardsPlayed": 0,
+        "totalPenalties": 0,
+        "totalRulesCreated": 0,
+        "averageTurnTime": 0
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Alice's Game",
+      "status": "in_progress",
+      "players": [],
+      "spectators": [],
+      "hostId": "550e8400-e29b-41d4-a716-446655440001",
+      "deck": {
+        "cards": [],
+        "count": 32
+      },
+      "discardPile": {
+        "cards": [],
+        "topCard": {
+          "id": "550e8400-e29b-41d4-a716-446655440100",
+          "suit": "hearts",
+          "rank": "7",
+          "displayName": "7 of hearts",
+          "isSpecial": false,
+          "specialEffect": "none"
+        }
+      },
+      "currentPlayerId": "550e8400-e29b-41d4-a716-446655440001",
+      "turnNumber": 15,
+      "turnDirection": "clockwise",
+      "currentSuit": null,
+      "rules": [],
+      "actionHistory": [],
+      "settings": {
+        "maxPlayers": 8,
+        "isPrivate": false,
+        "allowSpectators": true,
+        "startingHandSize": 7,
+        "penaltyMultiplier": 1,
+        "judgeStrictness": "moderate"
+      },
+      "createdAt": "2026-06-01T15:00:00Z",
+      "startedAt": "2026-06-01T15:05:00Z",
+      "lastActivityAt": "2026-06-01T15:50:00Z",
+      "statistics": {
+        "totalTurns": 15,
+        "totalCardsPlayed": 45,
+        "totalPenalties": 8,
+        "totalRulesCreated": 2,
+        "averageTurnTime": 12.5
+      }
+    }
+  ],
+  "x-diagrams": {
+    "domain-model": "../diagrams/rendered/domain-model.html",
+    "state-machine": "../diagrams/rendered/game-state-machine.html",
+    "sequence": "../diagrams/rendered/sequences/game-start-flow.html"
+  },
+  "x-diagram-sources": {
+    "domain-model": "../diagrams/source/domain-model.mmd",
+    "state-machine": "../diagrams/source/game-state-machine.mmd",
+    "sequence": "../diagrams/source/sequences/game-start-flow.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-001", "US-002", "US-003", "US-004", "US-005", "US-024", "US-025"],
+    "requirements": ["REQ-GAME-001", "REQ-GAME-002", "REQ-GAME-003", "REQ-STATE-001"]
+  }
+}

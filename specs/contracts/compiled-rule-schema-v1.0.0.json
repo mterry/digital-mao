@@ -1,0 +1,339 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/schemas/compiled-rule-v1.0.0.json",
+  "title": "CompiledRule",
+  "description": "Represents a machine-executable rule compiled from natural language by the LLM",
+  "type": "object",
+  "required": ["id", "originalRuleId", "triggers", "conditions", "actions", "penalties", "compiledAt"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the compiled rule",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440000"]
+    },
+    "originalRuleId": {
+      "type": "string",
+      "description": "ID of the original natural language rule",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "examples": ["550e8400-e29b-41d4-a716-446655440100"]
+    },
+    "triggers": {
+      "type": "array",
+      "description": "Events that trigger this rule evaluation",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["event", "parameters"],
+        "properties": {
+          "event": {
+            "type": "string",
+            "description": "Type of event that triggers the rule",
+            "enum": [
+              "card_played",
+              "card_drawn",
+              "turn_started",
+              "turn_ended",
+              "chat_message_sent",
+              "player_action",
+              "game_state_changed"
+            ],
+            "examples": ["card_played"]
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Parameters that must match for trigger to fire",
+            "properties": {
+              "cardRank": {
+                "type": "string",
+                "enum": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
+              },
+              "cardSuit": {
+                "type": "string",
+                "enum": ["hearts", "diamonds", "clubs", "spades"]
+              },
+              "playerId": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              },
+              "messagePattern": {
+                "type": "string",
+                "description": "Regex pattern to match chat messages"
+              }
+            }
+          }
+        }
+      },
+      "examples": [
+        [
+          {
+            "event": "card_played",
+            "parameters": {
+              "cardRank": "7"
+            }
+          }
+        ]
+      ]
+    },
+    "conditions": {
+      "type": "array",
+      "description": "Conditions that must be true for rule to apply",
+      "items": {
+        "type": "object",
+        "required": ["type", "operator", "value"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of condition to evaluate",
+            "enum": [
+              "game_state",
+              "player_state",
+              "card_state",
+              "timing",
+              "chat_content",
+              "action_sequence"
+            ]
+          },
+          "operator": {
+            "type": "string",
+            "description": "Comparison operator",
+            "enum": ["equals", "not_equals", "greater_than", "less_than", "contains", "matches", "within_time"]
+          },
+          "value": {
+            "description": "Value to compare against (type varies by condition type)"
+          },
+          "field": {
+            "type": "string",
+            "description": "Field to evaluate (e.g., 'currentPlayer.cardCount', 'lastAction.timestamp')"
+          }
+        }
+      },
+      "default": []
+    },
+    "actions": {
+      "type": "array",
+      "description": "Actions to execute when rule is triggered and conditions met",
+      "items": {
+        "type": "object",
+        "required": ["type"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Type of action to execute",
+            "enum": [
+              "require_speech",
+              "require_action",
+              "modify_game_state",
+              "send_notification",
+              "log_event"
+            ]
+          },
+          "parameters": {
+            "type": "object",
+            "description": "Action-specific parameters",
+            "properties": {
+              "requiredPhrase": {
+                "type": "string",
+                "description": "Exact phrase required (for require_speech)"
+              },
+              "phrasePattern": {
+                "type": "string",
+                "description": "Regex pattern for required phrase"
+              },
+              "timeWindow": {
+                "type": "integer",
+                "description": "Time window in milliseconds for action completion",
+                "minimum": 0
+              },
+              "targetPlayer": {
+                "type": "string",
+                "description": "Player who must perform the action ('current', 'next', 'all', or player ID)"
+              }
+            }
+          }
+        }
+      },
+      "default": []
+    },
+    "penalties": {
+      "type": "object",
+      "description": "Penalties for rule violation",
+      "required": ["cardCount", "message"],
+      "properties": {
+        "cardCount": {
+          "type": "integer",
+          "description": "Number of penalty cards to draw",
+          "minimum": 1,
+          "maximum": 10,
+          "examples": [1, 2, 3]
+        },
+        "message": {
+          "type": "string",
+          "description": "Cryptic message to send to violator",
+          "minLength": 10,
+          "maxLength": 200,
+          "examples": [
+            "One might consider the importance of proper greetings...",
+            "Timing is everything, as they say..."
+          ]
+        },
+        "severity": {
+          "type": "string",
+          "description": "Severity level of the violation",
+          "enum": ["minor", "moderate", "major"],
+          "default": "moderate"
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether penalty is announced to all players",
+          "default": true
+        }
+      }
+    },
+    "compiledAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when rule was compiled",
+      "examples": ["2026-06-01T15:50:00Z"]
+    },
+    "compilerVersion": {
+      "type": "string",
+      "description": "Version of the LLM compiler used",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+    "confidence": {
+      "type": "number",
+      "description": "Compiler's confidence in the compilation (0-1)",
+      "minimum": 0,
+      "maximum": 1,
+      "examples": [0.95, 0.87]
+    },
+    "ambiguities": {
+      "type": "array",
+      "description": "Potential ambiguities or edge cases identified",
+      "items": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Description of the ambiguity"
+          },
+          "resolution": {
+            "type": "string",
+            "description": "How the compiler resolved it"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Confidence in this resolution"
+          }
+        }
+      },
+      "default": []
+    },
+    "examples": {
+      "type": "array",
+      "description": "Example scenarios showing rule application",
+      "items": {
+        "type": "object",
+        "properties": {
+          "scenario": {
+            "type": "string",
+            "description": "Description of the scenario"
+          },
+          "triggers": {
+            "type": "boolean",
+            "description": "Whether rule triggers in this scenario"
+          },
+          "outcome": {
+            "type": "string",
+            "description": "Expected outcome"
+          }
+        }
+      },
+      "default": []
+    },
+    "testCases": {
+      "type": "array",
+      "description": "Test cases for validating rule behavior",
+      "items": {
+        "type": "object",
+        "required": ["input", "expectedOutput"],
+        "properties": {
+          "input": {
+            "type": "object",
+            "description": "Input game state and action"
+          },
+          "expectedOutput": {
+            "type": "object",
+            "description": "Expected enforcement decision"
+          }
+        }
+      },
+      "default": []
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "originalRuleId": "550e8400-e29b-41d4-a716-446655440100",
+      "triggers": [
+        {
+          "event": "card_played",
+          "parameters": {
+            "cardRank": "7"
+          }
+        }
+      ],
+      "conditions": [],
+      "actions": [
+        {
+          "type": "require_speech",
+          "parameters": {
+            "phrasePattern": "^Have a nice day$",
+            "timeWindow": 3000,
+            "targetPlayer": "current"
+          }
+        }
+      ],
+      "penalties": {
+        "cardCount": 1,
+        "message": "One might consider the importance of proper farewells when dealing with sevens...",
+        "severity": "minor",
+        "isPublic": true
+      },
+      "compiledAt": "2026-06-01T15:50:30Z",
+      "compilerVersion": "1.0.0",
+      "confidence": 0.95,
+      "ambiguities": [],
+      "examples": [
+        {
+          "scenario": "Player plays 7 of hearts and says 'Have a nice day' within 3 seconds",
+          "triggers": true,
+          "outcome": "No penalty - rule satisfied"
+        },
+        {
+          "scenario": "Player plays 7 of hearts but says nothing",
+          "triggers": true,
+          "outcome": "Penalty: 1 card drawn"
+        }
+      ],
+      "testCases": []
+    }
+  ],
+  "x-diagrams": {
+    "sequence": "../diagrams/rendered/sequences/rule-compilation-flow.html",
+    "execution": "../diagrams/rendered/sequences/rule-execution-flow.html"
+  },
+  "x-diagram-sources": {
+    "sequence": "../diagrams/source/sequences/rule-compilation-flow.mmd",
+    "execution": "../diagrams/source/sequences/rule-execution-flow.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-018", "US-021", "US-022"],
+    "requirements": ["REQ-RULE-004", "REQ-JUDGE-001", "REQ-JUDGE-002"]
+  }
+}
