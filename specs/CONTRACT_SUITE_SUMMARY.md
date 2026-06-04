@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-The Digital Mao contract suite is **COMPLETE** and **APPROVED FOR IMPLEMENTATION**. All 17 contracts, 9 architectural diagrams, quality documentation, and coordination plans have been created and validated.
+The Digital Mao contract suite is **COMPLETE** and **APPROVED FOR IMPLEMENTATION**. All 16 contracts (consolidated from 17), 9 architectural diagrams, quality documentation, and coordination plans have been created and validated.
 
 **Status:** ✅ Ready for Build Phase  
 **Quality Gates:** 9/9 Passed  
@@ -27,14 +27,15 @@ Data models with validation rules, examples, and diagram references.
 | Enforcement Case Schema | [`specs/contracts/enforcement-case-schema-v1.0.0.json`](specs/contracts/enforcement-case-schema-v1.0.0.json) | Rule enforcement decisions with LLM metadata | ✅ Complete |
 | Game State Schema | [`specs/contracts/game-state-schema-v1.0.0.json`](specs/contracts/game-state-schema-v1.0.0.json) | Complete game state including players, deck, rules | ✅ Complete |
 
-### OpenAPI Specifications (3 files)
+### OpenAPI Specifications (2 files)
 REST API contracts with request/response schemas, security, and examples.
 
 | Contract | Location | Purpose | Status |
 |----------|----------|---------|--------|
-| Game Management API | [`specs/contracts/game-management-api-v1.0.0.yaml`](specs/contracts/game-management-api-v1.0.0.yaml) | Game CRUD, player actions, game lifecycle | ✅ Complete |
-| Rule Management API | [`specs/contracts/rule-management-api-v1.0.0.yaml`](specs/contracts/rule-management-api-v1.0.0.yaml) | Rule proposals, compilation, activation, enforcement | ✅ Complete |
+| Game Server API | [`specs/contracts/game-server-api-v1.0.0.yaml`](specs/contracts/game-server-api-v1.0.0.yaml) | Unified API for game management, rule management, and player actions | ✅ Complete |
 | LLM Judge API | [`specs/contracts/llm-judge-api-v1.0.0.yaml`](specs/contracts/llm-judge-api-v1.0.0.yaml) | Internal API for rule compilation and action evaluation | ✅ Complete |
+
+**Note:** The Game Server API consolidates the previous Game Management API and Rule Management API into a single unified contract, aligning with the C4 Container architecture showing a unified Game Server (Node.js/Express + Socket.io).
 
 ### AsyncAPI Specifications (3 files)
 WebSocket event contracts with message schemas and examples.
@@ -303,11 +304,12 @@ All contract creation patterns, quality gates, and coordination strategies have 
 **Version:** 1.0.0
 
 **Quality Assurance:**
-- All 17 contracts complete and validated
+- All 16 contracts complete and validated (consolidated from 17)
 - All 9 diagrams created and rendered
 - All quality gates passed
 - Traceability matrix shows 93% coverage
 - Build and test plans ready
+- Architecture aligned with C4 Container diagram (unified Game Server)
 
 **Ready for:**
 - Infrastructure setup

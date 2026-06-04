@@ -7,7 +7,7 @@ This matrix ensures 100% coverage of user stories by contracts. Every user story
 
 ### Total Coverage
 - **User Stories:** 30 total
-- **Contracts:** 17 total (7 JSON Schema, 3 OpenAPI, 3 AsyncAPI, 4 Components)
+- **Contracts:** 16 total (7 JSON Schema, 2 OpenAPI, 3 AsyncAPI, 4 Components)
 - **Coverage:** 93% (28/30 stories covered, 2 deferred to future releases)
 
 ### By Release
@@ -65,9 +65,8 @@ This matrix ensures 100% coverage of user stories by contracts. Every user story
 - **enforcement-case-schema-v1.0.0.json**: US-009, US-014, US-021, US-022, US-023
 - **game-state-schema-v1.0.0.json**: US-001, US-002, US-005, US-015, US-025, US-029
 
-### OpenAPI Specifications (3)
-- **game-management-api-v1.0.0.yaml**: US-001, US-002, US-003, US-004, US-006, US-007, US-026
-- **rule-management-api-v1.0.0.yaml**: US-017, US-018, US-019, US-020, US-023
+### OpenAPI Specifications (2)
+- **game-server-api-v1.0.0.yaml**: US-001, US-002, US-003, US-004, US-006, US-007, US-017, US-018, US-019, US-020, US-023, US-026
 - **llm-judge-api-v1.0.0.yaml**: US-009, US-017, US-021, US-022, US-023
 
 ### AsyncAPI Specifications (3)
