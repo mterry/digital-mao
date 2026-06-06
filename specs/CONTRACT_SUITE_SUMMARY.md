@@ -20,21 +20,21 @@ Data models with validation rules, examples, and diagram references.
 
 | Contract | Location | Purpose | Status |
 |----------|----------|---------|--------|
-| Card Schema | [`specs/contracts/card-schema-v1.0.0.json`](specs/contracts/card-schema-v1.0.0.json) | Playing card model with suit, rank, Joker support (54 cards/deck) | ✅ Complete (Updated) |
+| Card Schema | [`specs/contracts/card-schema-v1.0.0.json`](specs/contracts/card-schema-v1.0.0.json) | **RADICAL:** Generic card model - NO hardcoded suits/ranks. Card = {id, properties}. All attributes defined by rules. | ✅ Complete (RADICAL UPDATE) |
 | Player Schema | [`specs/contracts/player-schema-v1.0.0.json`](specs/contracts/player-schema-v1.0.0.json) | Player state including hand, statistics, connection | ✅ Complete |
 | Chat Message Schema | [`specs/contracts/chat-message-schema-v1.0.0.json`](specs/contracts/chat-message-schema-v1.0.0.json) | Chat messages with types (player, system, judge, penalty) | ✅ Complete |
 | Rule Schema | [`specs/contracts/rule-schema-v1.0.0.json`](specs/contracts/rule-schema-v1.0.0.json) | Natural language rule proposals with lifecycle | ✅ Complete |
-| Compiled Rule Schema | [`specs/contracts/compiled-rule-schema-v1.0.0.json`](specs/contracts/compiled-rule-schema-v1.0.0.json) | Machine-executable rules with suit/rank matching, wild cards, draw actions | ✅ Complete (Updated) |
+| Compiled Rule Schema | [`specs/contracts/compiled-rule-schema-v1.0.0.json`](specs/contracts/compiled-rule-schema-v1.0.0.json) | **RADICAL:** Machine-executable rules with meta-rule types for card system definition. No hardcoded suit/rank enums. | ✅ Complete (RADICAL UPDATE) |
 | Enforcement Case Schema | [`specs/contracts/enforcement-case-schema-v1.0.0.json`](specs/contracts/enforcement-case-schema-v1.0.0.json) | Rule enforcement decisions with LLM metadata | ✅ Complete |
-| Game State Schema | [`specs/contracts/game-state-schema-v1.0.0.json`](specs/contracts/game-state-schema-v1.0.0.json) | Complete game state with multi-deck support (1-8 decks) | ✅ Complete (Updated) |
-| Initial Rules Schema | [`specs/contracts/initial-rules-v1.0.0.json`](specs/contracts/initial-rules-v1.0.0.json) | First round ruleset in natural language for LLM compilation | ✅ Complete (NEW) |
+| Game State Schema | [`specs/contracts/game-state-schema-v1.0.0.json`](specs/contracts/game-state-schema-v1.0.0.json) | **RADICAL:** Added cardDefinitions map. Deck/discard store card IDs only. No hardcoded suit enum. | ✅ Complete (RADICAL UPDATE) |
+| Initial Rules Schema | [`specs/contracts/initial-rules-v1.0.0.json`](specs/contracts/initial-rules-v1.0.0.json) | **RADICAL:** Includes meta-rules defining card system (suits, ranks, deck composition). Card system is rules-based! | ✅ Complete (RADICAL UPDATE) |
 
 ### OpenAPI Specifications (2 files)
 REST API contracts with request/response schemas, security, and examples.
 
 | Contract | Location | Purpose | Status |
 |----------|----------|---------|--------|
-| Game Server API | [`specs/contracts/game-server-api-v1.0.0.yaml`](specs/contracts/game-server-api-v1.0.0.yaml) | Unified API with declare-suit endpoint, rules-based validation | ✅ Complete (Updated) |
+| Game Server API | [`specs/contracts/game-server-api-v1.0.0.yaml`](specs/contracts/game-server-api-v1.0.0.yaml) | **RADICAL:** Added /card-definitions endpoint. Game initialization compiles card system rules before creating deck. | ✅ Complete (RADICAL UPDATE) |
 | LLM Judge API | [`specs/contracts/llm-judge-api-v1.0.0.yaml`](specs/contracts/llm-judge-api-v1.0.0.yaml) | Internal API for rule compilation and action evaluation | ✅ Complete |
 
 **Note:** The Game Server API consolidates the previous Game Management API and Rule Management API into a single unified contract, aligning with the C4 Container architecture showing a unified Game Server (Node.js/Express + Socket.io).
@@ -91,6 +91,141 @@ Interactive HTML diagrams with zoom, pan, and search capabilities.
 | Game State Machine | [`specs/diagrams/rendered/game-state-machine.html`](specs/diagrams/rendered/game-state-machine.html) | Interactive HTML | ✅ Complete |
 | Domain Model | [`specs/diagrams/rendered/domain-model.html`](specs/diagrams/rendered/domain-model.html) | Interactive HTML | ✅ Complete |
 | Database Schema | [`specs/diagrams/rendered/database-schema.html`](specs/diagrams/rendered/database-schema.html) | Interactive HTML | ✅ Complete |
+
+---
+
+## 🚀 Radical Design Philosophy: Rules-Based Card System
+
+### The Problem We Solved
+Traditional card game implementations hardcode card attributes (suits, ranks, deck composition) into schemas and code. This creates inflexibility and violates the principle that "everything should be discoverable through rules."
+
+### Our Ultra-Radical Solution
+**We made the card system itself part of the rules.** The ONLY hardcoded concept is:
+- A "card" is an object with an `id` and a `properties` map
+
+Everything else (suits, ranks, deck composition) is defined by the game's initial rules and compiled by the LLM Judge at game initialization.
+
+### What This Means
+
+#### Before (Traditional Approach)
+```json
+{
+  "suit": {
+    "enum": ["hearts", "diamonds", "clubs", "spades"]  // HARDCODED
+  },
+  "rank": {
+    "enum": ["A", "2", ..., "K"]  // HARDCODED
+  }
+}
+```
+
+#### After (Radical Rules-Based Approach)
+```json
+{
+  "properties": {
+    "type": "object",
+    "additionalProperties": true  // DEFINED BY RULES
+  }
+}
+```
+
+### The Workflow
+
+1. **Initial Rules Define Card System** (INIT-001 through INIT-004):
+   - "The game uses standard playing cards with suits and ranks"
+   - "There are four suits: hearts, diamonds, clubs, spades"
+   - "There are thirteen ranks: A, 2-10, J, Q, K, plus jokers"
+   - "A deck contains 54 cards: 52 standard + 2 jokers"
+
+2. **Game Initialization Compiles Card System**:
+   - Load initial rules (including card system meta-rules)
+   - LLM Judge compiles card system rules
+   - Generate card definitions based on compiled rules
+   - Create deck(s) from card definitions
+   - Then compile gameplay rules
+
+3. **Card Definitions Stored in Game State**:
+   - `cardDefinitions` map stores all card instances
+   - Deck and discard pile store card IDs only
+   - Reference `cardDefinitions` to get actual card data
+
+### Benefits
+
+1. **Ultimate Flexibility**: Could theoretically support ANY card game
+   - Standard playing cards (current)
+   - Tarot decks (78 cards with different suits)
+   - Uno cards (colors instead of suits, special cards)
+   - Custom card systems invented by players
+
+2. **True to Mao Philosophy**: Even the card system is discoverable through rules
+
+3. **Evolvable**: Card system can change through rule modifications
+
+4. **No Assumptions**: Schema makes zero assumptions about card structure
+
+### Example: How It Works
+
+**Initial Rules (Natural Language)**:
+```
+INIT-001: "The game uses standard playing cards with suits and ranks"
+INIT-002: "There are four suits: hearts, diamonds, clubs, spades"
+INIT-003: "There are thirteen ranks: A, 2, 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K"
+INIT-004: "A deck contains 52 cards: one for each suit-rank combination"
+```
+
+**LLM Judge Compiles To**:
+```json
+{
+  "cardDefinitions": {
+    "uuid-1": {
+      "id": "uuid-1",
+      "properties": {
+        "suit": "hearts",
+        "rank": "A",
+        "displayName": "A of hearts"
+      }
+    },
+    "uuid-2": {
+      "id": "uuid-2",
+      "properties": {
+        "suit": "hearts",
+        "rank": "2",
+        "displayName": "2 of hearts"
+      }
+    }
+    // ... 50 more cards
+  }
+}
+```
+
+**Game Uses Card IDs**:
+```json
+{
+  "deck": {
+    "cardIds": ["uuid-1", "uuid-2", ...],
+    "count": 52
+  },
+  "discardPile": {
+    "cardIds": ["uuid-1"],
+    "topCardId": "uuid-1"
+  }
+}
+```
+
+### API Support
+
+**New Endpoint**: `GET /games/{gameId}/card-definitions`
+- Returns the compiled card definitions for a game
+- Useful for debugging, UI rendering, understanding card system
+- Shows exactly what cards exist based on the rules
+
+### Design Decision Rationale
+
+This radical approach was chosen because:
+1. **User Feedback**: "Can you even make the existence of cards and suits rules?"
+2. **Consistency**: If rules define gameplay, why not card system too?
+3. **Flexibility**: Supports future game variations without schema changes
+4. **Philosophy**: True to Mao's spirit of discovering everything through play
 
 ---
 

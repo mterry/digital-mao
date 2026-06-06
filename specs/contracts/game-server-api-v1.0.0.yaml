@@ -22,11 +22,13 @@ info:
     sequence-game-start: ../diagrams/rendered/sequences/game-start-flow.html
     sequence-card-play: ../diagrams/rendered/sequences/card-play-flow.html
     sequence-rule-compilation: ../diagrams/rendered/sequences/rule-compilation-flow.html
+    sequence-card-system-init: ../diagrams/rendered/sequences/card-system-initialization-flow.html
   x-diagram-sources:
     architecture: ../diagrams/source/c4-container.mmd
     sequence-game-start: ../diagrams/source/sequences/game-start-flow.mmd
     sequence-card-play: ../diagrams/source/sequences/card-play-flow.mmd
     sequence-rule-compilation: ../diagrams/source/sequences/rule-compilation-flow.mmd
+    sequence-card-system-init: ../diagrams/source/sequences/card-system-initialization-flow.mmd
 
 servers:
   - url: https://api.digital-mao.com/v1
@@ -286,7 +288,19 @@ paths:
     post:
       tags: [games]
       summary: Start a game
-      description: Start a game from lobby (host only, requires 2+ players)
+      description: |
+        Start a game from lobby (host only, requires 2+ players).
+        
+        **Initialization Process:**
+        1. Load initial rules (including card system meta-rules)
+        2. Compile card system rules via LLM Judge to generate card definitions
+        3. Create deck(s) based on compiled card definitions
+        4. Compile gameplay rules
+        5. Deal initial hands to players
+        6. Set game status to 'in_progress'
+        
+        The card system (suits, ranks, deck composition) is defined by the initial rules,
+        not hardcoded. This allows for ultimate flexibility in card game design.
       operationId: startGame
       parameters:
         - $ref: '#/components/parameters/GameId'
@@ -789,6 +803,59 @@ paths:
           $ref: '#/components/responses/InternalServerError'
       x-traceability:
         user-stories: [US-023]
+
+  /games/{gameId}/card-definitions:
+    get:
+      tags: [games]
+      summary: Get card definitions
+      description: |
+        Retrieve the card definitions for this game. Card definitions are derived from
+        the game's card system rules (defined in initial rules) and compiled by the LLM Judge
+        during game initialization. This endpoint returns the actual card instances used in
+        this game, with their properties as defined by the rules.
+        
+        **Use Cases:**
+        - Understanding what cards exist in the game
+        - Debugging card-related issues
+        - Verifying card system compilation
+        - Building UI components that display cards
+      operationId: getCardDefinitions
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      responses:
+        '200':
+          description: Card definitions retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cardDefinitions:
+                    type: object
+                    description: Map of card ID to card properties
+                    additionalProperties:
+                      $ref: '#/components/schemas/Card'
+                  metadata:
+                    type: object
+                    properties:
+                      totalCards:
+                        type: integer
+                        description: Total number of cards in the game
+                      compiledFrom:
+                        type: array
+                        description: IDs of the meta-rules that defined the card system
+                        items:
+                          type: string
+                      compiledAt:
+                        type: string
+                        format: date-time
+                        description: When the card system was compiled
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-005, US-006]
 
   /games/{gameId}/rules/conflicts:
     get:

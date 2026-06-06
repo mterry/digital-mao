@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Card System Initialization Flow</title>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'default',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-top: 0;
+        }
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Card System Initialization Flow</h1>
+        <div class="mermaid">
+sequenceDiagram
+    participant Host as Game Host
+    participant API as Game Server API
+    participant Judge as LLM Judge
+    participant DB as Database
+    
+    Note over Host,DB: Ultra-Radical Rules-Based Card System Initialization
+    
+    Host->>API: POST /games/{gameId}/start
+    activate API
+    
+    Note over API: Step 1: Load Initial Rules
+    API->>DB: Load initial-rules-v1.0.0.json
+    DB-->>API: Initial rules (including meta-rules)
+    
+    Note over API,Judge: Step 2: Compile Card System Meta-Rules
+    API->>Judge: POST /compile-rules<br/>(INIT-001 to INIT-004)
+    activate Judge
+    
+    Note over Judge: Parse meta-rules:<br/>- Card structure (suit, rank)<br/>- Available suits<br/>- Available ranks<br/>- Deck composition
+    
+    Judge->>Judge: Generate card definitions<br/>from meta-rules
+    
+    Judge-->>API: Compiled card system:<br/>{cardDefinitions: {...}}
+    deactivate Judge
+    
+    Note over API: Step 3: Create Deck from Card Definitions
+    API->>API: Generate 54 card instances<br/>based on compiled definitions
+    
+    API->>DB: Store cardDefinitions in game state
+    DB-->>API: Stored
+    
+    Note over API,Judge: Step 4: Compile Gameplay Rules
+    API->>Judge: POST /compile-rules<br/>(INIT-005 to INIT-009)
+    activate Judge
+    
+    Note over Judge: Compile gameplay rules:<br/>- Card matching<br/>- Wild cards<br/>- Draw rules<br/>- Win conditions<br/>- Turn order
+    
+    Judge-->>API: Compiled gameplay rules
+    deactivate Judge
+    
+    API->>DB: Store compiled rules
+    DB-->>API: Stored
+    
+    Note over API: Step 5: Deal Initial Hands
+    API->>API: Shuffle deck<br/>Deal 7 cards to each player
+    
+    API->>DB: Update game state:<br/>- status: in_progress<br/>- player hands<br/>- deck cardIds<br/>- discard pile
+    DB-->>API: Updated
+    
+    API-->>Host: 200 OK<br/>Game started with<br/>rules-based card system
+    deactivate API
+    
+    Note over Host,DB: Card system is now fully defined by rules,<br/>not hardcoded in schemas!
+        </div>
+        <div class="footer">
+            <p>Generated from Mermaid source diagram</p>
+            <p>Interactive diagram - you can zoom and pan</p>
+        </div>
+    </div>
+</body>
+</html>

@@ -57,17 +57,17 @@ This matrix ensures 100% coverage of user stories by contracts. Every user story
 ## Contract to User Story Mapping
 
 ### JSON Schemas (8)
-- **card-schema-v1.0.0.json**: US-005, US-006, US-008 (Updated: Added Joker support, removed hardcoded special effects)
+- **card-schema-v1.0.0.json**: US-005, US-006, US-008 (RADICAL UPDATE: Completely generic - no hardcoded suits/ranks. Card is just {id, properties}. All card attributes defined by rules.)
 - **player-schema-v1.0.0.json**: US-003, US-005, US-009, US-010, US-014, US-016, US-024
 - **chat-message-schema-v1.0.0.json**: US-011, US-012, US-013
 - **rule-schema-v1.0.0.json**: US-016, US-017, US-020
-- **compiled-rule-schema-v1.0.0.json**: US-018, US-021 (Updated: Added support for suit/rank matching, wild cards, draw actions)
+- **compiled-rule-schema-v1.0.0.json**: US-018, US-021 (RADICAL UPDATE: Added meta-rule types for card system definition. Removed hardcoded suit/rank enums.)
 - **enforcement-case-schema-v1.0.0.json**: US-009, US-014, US-021, US-022, US-023
-- **game-state-schema-v1.0.0.json**: US-001, US-002, US-005, US-015, US-025, US-029 (Updated: Added deckCount, declaredSuit; removed currentSuit)
-- **initial-rules-v1.0.0.json**: US-004, US-006, US-007, US-008, US-010 (NEW: Defines first round ruleset in natural language)
+- **game-state-schema-v1.0.0.json**: US-001, US-002, US-005, US-015, US-025, US-029 (RADICAL UPDATE: Added cardDefinitions map. Deck/discard now store card IDs, not full cards. Removed hardcoded suit enum.)
+- **initial-rules-v1.0.0.json**: US-004, US-006, US-007, US-008, US-010 (RADICAL UPDATE: Added meta-rules defining card system - suits, ranks, deck composition. Card system is now rules-based!)
 
 ### OpenAPI Specifications (2)
-- **game-server-api-v1.0.0.yaml**: US-001, US-002, US-003, US-004, US-006, US-007, US-017, US-018, US-019, US-020, US-023, US-026 (Updated: Added declare-suit endpoint, removed hardcoded validation)
+- **game-server-api-v1.0.0.yaml**: US-001, US-002, US-003, US-004, US-005, US-006, US-007, US-017, US-018, US-019, US-020, US-023, US-026 (RADICAL UPDATE: Added /card-definitions endpoint. Updated /start endpoint to document card system compilation. Game initialization now compiles card system rules before creating deck.)
 - **llm-judge-api-v1.0.0.yaml**: US-009, US-017, US-021, US-022, US-023
 
 ### AsyncAPI Specifications (3)

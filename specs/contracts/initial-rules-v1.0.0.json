@@ -36,8 +36,8 @@
           "category": {
             "type": "string",
             "description": "Category of the rule",
-            "enum": ["card_play", "draw", "turn_order", "win_condition", "wild_card"],
-            "examples": ["card_play", "wild_card"]
+            "enum": ["meta", "card_play", "draw", "turn_order", "win_condition", "wild_card"],
+            "examples": ["meta", "card_play", "wild_card"]
           },
           "description": {
             "type": "string",
@@ -91,34 +91,62 @@
         {
           "id": "INIT-001",
           "priority": 100,
+          "category": "meta",
+          "description": "The game uses standard playing cards. Each card has two primary attributes: a suit and a rank.",
+          "notes": "Meta-rule defining the card system structure. This rule establishes that cards have 'suit' and 'rank' properties."
+        },
+        {
+          "id": "INIT-002",
+          "priority": 100,
+          "category": "meta",
+          "description": "There are four suits: hearts, diamonds, clubs, and spades.",
+          "notes": "Meta-rule defining the available suits in the card system."
+        },
+        {
+          "id": "INIT-003",
+          "priority": 100,
+          "category": "meta",
+          "description": "There are thirteen standard ranks: A, 2, 3, 4, 5, 6, 7, 8, 9, 10, J, Q, K. Additionally, there are two special ranks: red_joker and black_joker.",
+          "notes": "Meta-rule defining the available ranks in the card system."
+        },
+        {
+          "id": "INIT-004",
+          "priority": 100,
+          "category": "meta",
+          "description": "A standard deck contains 54 cards: one card for each combination of the four suits and thirteen standard ranks (52 cards), plus one red joker and one black joker (2 cards). Jokers do not have a suit property.",
+          "notes": "Meta-rule defining deck composition. The LLM Judge must use this to generate the initial card definitions."
+        },
+        {
+          "id": "INIT-005",
+          "priority": 95,
           "category": "card_play",
           "description": "A card may be played if it matches the rank OR suit of the top discard pile card",
           "notes": "This is the fundamental matching rule for card play"
         },
         {
-          "id": "INIT-002",
-          "priority": 95,
+          "id": "INIT-006",
+          "priority": 90,
           "category": "wild_card",
           "description": "A card with rank '8' may be played on any card, and the player must declare a suit",
           "notes": "Wild card rule - player must use declare-suit endpoint after playing"
         },
         {
-          "id": "INIT-003",
-          "priority": 90,
+          "id": "INIT-007",
+          "priority": 85,
           "category": "draw",
           "description": "If a player cannot play a card, they must draw one card from the deck",
           "notes": "Draw rule - enforced when player has no valid plays"
         },
         {
-          "id": "INIT-004",
-          "priority": 85,
+          "id": "INIT-008",
+          "priority": 80,
           "category": "win_condition",
           "description": "The first player to play all cards from their hand wins the round",
           "notes": "Win condition check after each card play"
         },
         {
-          "id": "INIT-005",
-          "priority": 80,
+          "id": "INIT-009",
+          "priority": 75,
           "category": "turn_order",
           "description": "Play proceeds clockwise around the table",
           "notes": "Turn order management - can be modified by future rules"
@@ -133,10 +161,12 @@
     }
   ],
   "x-diagrams": {
-    "rule-compilation": "../diagrams/rendered/sequences/rule-compilation-flow.html"
+    "rule-compilation": "../diagrams/rendered/sequences/rule-compilation-flow.html",
+    "card-system-initialization": "../diagrams/rendered/sequences/card-system-initialization-flow.html"
   },
   "x-diagram-sources": {
-    "rule-compilation": "../diagrams/source/sequences/rule-compilation-flow.mmd"
+    "rule-compilation": "../diagrams/source/sequences/rule-compilation-flow.mmd",
+    "card-system-initialization": "../diagrams/source/sequences/card-system-initialization-flow.mmd"
   },
   "x-traceability": {
     "user-stories": ["US-004", "US-006", "US-007", "US-008", "US-010"],

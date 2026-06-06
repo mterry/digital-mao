@@ -4,8 +4,49 @@
   "title": "GameState",
   "description": "Represents the complete state of a Digital Mao game",
   "type": "object",
-  "required": ["id", "status", "players", "deck", "discardPile", "currentPlayerId", "turnNumber", "createdAt"],
+  "required": ["id", "status", "players", "cardDefinitions", "deck", "discardPile", "currentPlayerId", "turnNumber", "createdAt"],
   "properties": {
+    "cardDefinitions": {
+      "type": "object",
+      "description": "Map of card ID to card properties. Card definitions are derived from the game's card system rules (defined in initial rules). This map stores the actual card instances used in this game, with their properties as defined by the rules.",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["id", "properties"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "properties": {
+            "type": "object",
+            "description": "Card properties as defined by card system rules",
+            "additionalProperties": true
+          }
+        }
+      },
+      "examples": [
+        {
+          "550e8400-e29b-41d4-a716-446655440000": {
+            "id": "550e8400-e29b-41d4-a716-446655440000",
+            "properties": {
+              "suit": "hearts",
+              "rank": "8",
+              "displayName": "8 of hearts",
+              "deckNumber": 1
+            }
+          },
+          "550e8400-e29b-41d4-a716-446655440001": {
+            "id": "550e8400-e29b-41d4-a716-446655440001",
+            "properties": {
+              "suit": "spades",
+              "rank": "Q",
+              "displayName": "Q of spades",
+              "deckNumber": 1
+            }
+          }
+        }
+      ]
+    },
     "id": {
       "type": "string",
       "description": "Unique identifier for the game",
@@ -63,14 +104,15 @@
     },
     "deck": {
       "type": "object",
-      "description": "The draw pile",
-      "required": ["cards", "count"],
+      "description": "The draw pile. Contains only card IDs - actual card data is in cardDefinitions map.",
+      "required": ["cardIds", "count"],
       "properties": {
-        "cards": {
+        "cardIds": {
           "type": "array",
-          "description": "Cards in the deck (hidden from players)",
+          "description": "IDs of cards in the deck (hidden from players). Reference cardDefinitions for actual card data.",
           "items": {
-            "$ref": "card-schema-v1.0.0.json"
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
           }
         },
         "count": {
@@ -83,21 +125,23 @@
     },
     "discardPile": {
       "type": "object",
-      "description": "The discard pile",
-      "required": ["cards", "topCard"],
+      "description": "The discard pile. Contains card IDs - actual card data is in cardDefinitions map.",
+      "required": ["cardIds", "topCardId"],
       "properties": {
-        "cards": {
+        "cardIds": {
           "type": "array",
-          "description": "All cards in discard pile",
+          "description": "IDs of all cards in discard pile. Reference cardDefinitions for actual card data.",
           "items": {
-            "$ref": "card-schema-v1.0.0.json"
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
           }
         },
-        "topCard": {
-          "description": "The top card of the discard pile (visible to all)",
+        "topCardId": {
+          "description": "ID of the top card of the discard pile (visible to all). Null if discard pile is empty.",
           "oneOf": [
             {
-              "$ref": "card-schema-v1.0.0.json"
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
             },
             {
               "type": "null"
@@ -126,8 +170,7 @@
     },
     "declaredSuit": {
       "type": "string",
-      "description": "Suit declared by wild card play (null if not declared)",
-      "enum": ["hearts", "diamonds", "clubs", "spades", null],
+      "description": "Suit declared by wild card play (null if not declared). The valid suit values are defined by the card system rules, not hardcoded here.",
       "examples": ["hearts", null]
     },
     "rules": {
@@ -313,19 +356,24 @@
       "players": [],
       "spectators": [],
       "hostId": "550e8400-e29b-41d4-a716-446655440001",
+      "cardDefinitions": {
+        "550e8400-e29b-41d4-a716-446655440100": {
+          "id": "550e8400-e29b-41d4-a716-446655440100",
+          "properties": {
+            "suit": "hearts",
+            "rank": "7",
+            "displayName": "7 of hearts",
+            "deckNumber": 1
+          }
+        }
+      },
       "deck": {
-        "cards": [],
+        "cardIds": [],
         "count": 32
       },
       "discardPile": {
-        "cards": [],
-        "topCard": {
-          "id": "550e8400-e29b-41d4-a716-446655440100",
-          "suit": "hearts",
-          "rank": "7",
-          "displayName": "7 of hearts",
-          "deckNumber": 1
-        }
+        "cardIds": ["550e8400-e29b-41d4-a716-446655440100"],
+        "topCardId": "550e8400-e29b-41d4-a716-446655440100"
       },
       "currentPlayerId": "550e8400-e29b-41d4-a716-446655440001",
       "turnNumber": 15,

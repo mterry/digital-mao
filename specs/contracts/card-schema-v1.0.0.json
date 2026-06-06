@@ -2,9 +2,9 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://digital-mao.com/schemas/card-v1.0.0.json",
   "title": "Card",
-  "description": "Represents a playing card in the Digital Mao game",
+  "description": "Represents a generic card in the Digital Mao game. The card structure is intentionally minimal - all card attributes (suits, ranks, etc.) are defined by the game's initial rules, not hardcoded in this schema. This radical design allows the card system itself to be rules-based and evolvable.",
   "type": "object",
-  "required": ["id", "suit", "rank"],
+  "required": ["id", "properties"],
   "properties": {
     "id": {
       "type": "string",
@@ -12,70 +12,86 @@
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
       "examples": ["550e8400-e29b-41d4-a716-446655440000"]
     },
-    "suit": {
-      "type": "string",
-      "description": "The suit of the card (null for Jokers)",
-      "enum": ["hearts", "diamonds", "clubs", "spades", null],
-      "examples": ["hearts", null]
-    },
-    "rank": {
-      "type": "string",
-      "description": "The rank of the card",
-      "enum": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "red_joker", "black_joker"],
-      "examples": ["A", "8", "Q", "red_joker"]
-    },
-    "displayName": {
-      "type": "string",
-      "description": "Human-readable card name",
-      "pattern": "^((A|[2-9]|10|J|Q|K) of (hearts|diamonds|clubs|spades)|Red Joker|Black Joker)$",
-      "examples": ["8 of hearts", "Q of spades", "Red Joker"]
-    },
-    "deckNumber": {
-      "type": "integer",
-      "description": "Which physical deck this card came from (1-8)",
-      "minimum": 1,
-      "maximum": 8,
-      "examples": [1, 2]
+    "properties": {
+      "type": "object",
+      "description": "Generic properties object containing card attributes as defined by the game's card system rules. Common properties include 'suit', 'rank', 'displayName', but the schema does not enforce these - they are defined by rules.",
+      "additionalProperties": true,
+      "examples": [
+        {
+          "suit": "hearts",
+          "rank": "8",
+          "displayName": "8 of hearts",
+          "deckNumber": 1
+        },
+        {
+          "suit": "spades",
+          "rank": "Q",
+          "displayName": "Q of spades",
+          "deckNumber": 1
+        },
+        {
+          "rank": "red_joker",
+          "displayName": "Red Joker",
+          "deckNumber": 1
+        }
+      ]
     }
   },
   "additionalProperties": false,
   "examples": [
     {
       "id": "550e8400-e29b-41d4-a716-446655440000",
-      "suit": "hearts",
-      "rank": "8",
-      "displayName": "8 of hearts",
-      "deckNumber": 1
+      "properties": {
+        "suit": "hearts",
+        "rank": "8",
+        "displayName": "8 of hearts",
+        "deckNumber": 1
+      }
     },
     {
       "id": "550e8400-e29b-41d4-a716-446655440001",
-      "suit": "spades",
-      "rank": "Q",
-      "displayName": "Q of spades",
-      "deckNumber": 1
+      "properties": {
+        "suit": "spades",
+        "rank": "Q",
+        "displayName": "Q of spades",
+        "deckNumber": 1
+      }
     },
     {
       "id": "550e8400-e29b-41d4-a716-446655440002",
-      "suit": "diamonds",
-      "rank": "5",
-      "displayName": "5 of diamonds",
-      "deckNumber": 1
+      "properties": {
+        "suit": "diamonds",
+        "rank": "5",
+        "displayName": "5 of diamonds",
+        "deckNumber": 1
+      }
     },
     {
       "id": "550e8400-e29b-41d4-a716-446655440003",
-      "suit": null,
-      "rank": "red_joker",
-      "displayName": "Red Joker",
-      "deckNumber": 1
+      "properties": {
+        "rank": "red_joker",
+        "displayName": "Red Joker",
+        "deckNumber": 1
+      }
     },
     {
       "id": "550e8400-e29b-41d4-a716-446655440004",
-      "suit": null,
-      "rank": "black_joker",
-      "displayName": "Black Joker",
-      "deckNumber": 2
+      "properties": {
+        "rank": "black_joker",
+        "displayName": "Black Joker",
+        "deckNumber": 2
+      }
     }
   ],
+  "x-design-philosophy": {
+    "radical-rules-based": "This schema intentionally avoids hardcoding ANY card attributes (suits, ranks, etc.). The card is simply an object with an ID and a generic properties map. The actual card system (what suits exist, what ranks exist, how many cards in a deck) is defined entirely by the game's initial rules. This allows for ultimate flexibility - the same schema could theoretically support standard playing cards, Tarot decks, Uno cards, or completely custom card systems.",
+    "benefits": [
+      "Card system can evolve through rule changes",
+      "No assumptions about card structure beyond having properties",
+      "Supports any card game, not just standard playing cards",
+      "True to Mao's philosophy of discovering rules through play"
+    ]
+  },
   "x-diagrams": {
     "domain-model": "../diagrams/rendered/domain-model.html"
   },
@@ -84,6 +100,7 @@
   },
   "x-traceability": {
     "user-stories": ["US-005", "US-006", "US-008"],
-    "requirements": ["REQ-GAME-001", "REQ-GAME-002"]
+    "requirements": ["REQ-GAME-001", "REQ-GAME-002"],
+    "design-decisions": ["DD-001: Ultra-radical rules-based card system"]
   }
 }
