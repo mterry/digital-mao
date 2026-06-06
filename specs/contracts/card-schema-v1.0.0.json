@@ -14,32 +14,28 @@
     },
     "suit": {
       "type": "string",
-      "description": "The suit of the card",
-      "enum": ["hearts", "diamonds", "clubs", "spades"],
-      "examples": ["hearts"]
+      "description": "The suit of the card (null for Jokers)",
+      "enum": ["hearts", "diamonds", "clubs", "spades", null],
+      "examples": ["hearts", null]
     },
     "rank": {
       "type": "string",
       "description": "The rank of the card",
-      "enum": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"],
-      "examples": ["A", "8", "Q"]
+      "enum": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "red_joker", "black_joker"],
+      "examples": ["A", "8", "Q", "red_joker"]
     },
     "displayName": {
       "type": "string",
       "description": "Human-readable card name",
-      "pattern": "^(A|[2-9]|10|J|Q|K) of (hearts|diamonds|clubs|spades)$",
-      "examples": ["8 of hearts", "Q of spades"]
+      "pattern": "^((A|[2-9]|10|J|Q|K) of (hearts|diamonds|clubs|spades)|Red Joker|Black Joker)$",
+      "examples": ["8 of hearts", "Q of spades", "Red Joker"]
     },
-    "isSpecial": {
-      "type": "boolean",
-      "description": "Whether this card has special effects (8=suit change, A=reverse, Q=skip)",
-      "default": false
-    },
-    "specialEffect": {
-      "type": "string",
-      "description": "The special effect this card triggers",
-      "enum": ["suit_change", "reverse_direction", "skip_next", "none"],
-      "examples": ["suit_change"]
+    "deckNumber": {
+      "type": "integer",
+      "description": "Which physical deck this card came from (1-8)",
+      "minimum": 1,
+      "maximum": 8,
+      "examples": [1, 2]
     }
   },
   "additionalProperties": false,
@@ -49,24 +45,35 @@
       "suit": "hearts",
       "rank": "8",
       "displayName": "8 of hearts",
-      "isSpecial": true,
-      "specialEffect": "suit_change"
+      "deckNumber": 1
     },
     {
       "id": "550e8400-e29b-41d4-a716-446655440001",
       "suit": "spades",
       "rank": "Q",
       "displayName": "Q of spades",
-      "isSpecial": true,
-      "specialEffect": "skip_next"
+      "deckNumber": 1
     },
     {
       "id": "550e8400-e29b-41d4-a716-446655440002",
       "suit": "diamonds",
       "rank": "5",
       "displayName": "5 of diamonds",
-      "isSpecial": false,
-      "specialEffect": "none"
+      "deckNumber": 1
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "suit": null,
+      "rank": "red_joker",
+      "displayName": "Red Joker",
+      "deckNumber": 1
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440004",
+      "suit": null,
+      "rank": "black_joker",
+      "displayName": "Black Joker",
+      "deckNumber": 2
     }
   ],
   "x-diagrams": {

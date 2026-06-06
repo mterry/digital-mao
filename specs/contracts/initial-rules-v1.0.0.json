@@ -1,0 +1,145 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://digital-mao.com/schemas/initial-rules-v1.0.0.json",
+  "title": "InitialRules",
+  "description": "Defines the starting ruleset for the first round of play. These rules are expressed in natural language and will be compiled by the LLM Judge at game initialization.",
+  "type": "object",
+  "required": ["version", "rules"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Version of the initial ruleset",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "examples": ["1.0.0"]
+    },
+    "rules": {
+      "type": "array",
+      "description": "Natural language rules that define the initial game behavior",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "priority", "category", "description"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Unique identifier for this initial rule",
+            "pattern": "^INIT-[0-9]{3}$",
+            "examples": ["INIT-001", "INIT-002"]
+          },
+          "priority": {
+            "type": "integer",
+            "description": "Rule priority (higher numbers = higher priority)",
+            "minimum": 1,
+            "maximum": 100,
+            "examples": [100, 90, 80]
+          },
+          "category": {
+            "type": "string",
+            "description": "Category of the rule",
+            "enum": ["card_play", "draw", "turn_order", "win_condition", "wild_card"],
+            "examples": ["card_play", "wild_card"]
+          },
+          "description": {
+            "type": "string",
+            "description": "Natural language description of the rule that will be compiled by the LLM Judge",
+            "minLength": 10,
+            "maxLength": 500,
+            "examples": [
+              "A card may be played if it matches the rank OR suit of the top discard pile card",
+              "If a player cannot play a card, they must draw one card from the deck"
+            ]
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional implementation notes for the LLM Judge compiler",
+            "maxLength": 200
+          }
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Metadata about this ruleset",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the ruleset (must not reveal the game pattern)",
+          "examples": ["Standard Initial Rules", "First Round Rules"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the ruleset purpose"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this ruleset was created"
+        },
+        "lastModified": {
+          "type": "string",
+          "format": "date-time",
+          "description": "When this ruleset was last modified"
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "version": "1.0.0",
+      "rules": [
+        {
+          "id": "INIT-001",
+          "priority": 100,
+          "category": "card_play",
+          "description": "A card may be played if it matches the rank OR suit of the top discard pile card",
+          "notes": "This is the fundamental matching rule for card play"
+        },
+        {
+          "id": "INIT-002",
+          "priority": 95,
+          "category": "wild_card",
+          "description": "A card with rank '8' may be played on any card, and the player must declare a suit",
+          "notes": "Wild card rule - player must use declare-suit endpoint after playing"
+        },
+        {
+          "id": "INIT-003",
+          "priority": 90,
+          "category": "draw",
+          "description": "If a player cannot play a card, they must draw one card from the deck",
+          "notes": "Draw rule - enforced when player has no valid plays"
+        },
+        {
+          "id": "INIT-004",
+          "priority": 85,
+          "category": "win_condition",
+          "description": "The first player to play all cards from their hand wins the round",
+          "notes": "Win condition check after each card play"
+        },
+        {
+          "id": "INIT-005",
+          "priority": 80,
+          "category": "turn_order",
+          "description": "Play proceeds clockwise around the table",
+          "notes": "Turn order management - can be modified by future rules"
+        }
+      ],
+      "metadata": {
+        "name": "Standard Initial Rules",
+        "description": "The starting ruleset for the first round of play",
+        "createdAt": "2026-06-01T00:00:00Z",
+        "lastModified": "2026-06-01T00:00:00Z"
+      }
+    }
+  ],
+  "x-diagrams": {
+    "rule-compilation": "../diagrams/rendered/sequences/rule-compilation-flow.html"
+  },
+  "x-diagram-sources": {
+    "rule-compilation": "../diagrams/source/sequences/rule-compilation-flow.mmd"
+  },
+  "x-traceability": {
+    "user-stories": ["US-004", "US-006", "US-007", "US-008", "US-010"],
+    "requirements": ["REQ-GAME-001", "REQ-GAME-002", "REQ-RULE-001"]
+  }
+}

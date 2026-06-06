@@ -316,7 +316,9 @@ paths:
     post:
       tags: [actions]
       summary: Play a card
-      description: Play a card from player's hand
+      description: |
+        Play a card from player's hand. All validation is performed by the LLM Judge Service
+        based on active rules. No hardcoded card validation logic is applied.
       operationId: playCard
       parameters:
         - $ref: '#/components/parameters/GameId'
@@ -334,10 +336,6 @@ paths:
                 cardId:
                   type: string
                   format: uuid
-                selectedSuit:
-                  type: string
-                  enum: [hearts, diamonds, clubs, spades]
-                  description: Required when playing an 8
       responses:
         '200':
           description: Card played successfully
@@ -353,13 +351,73 @@ paths:
                     items:
                       $ref: '#/components/schemas/Penalty'
         '400':
-          description: Invalid card play
+          description: Invalid card play (determined by rules engine)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
         '403':
           description: Not player's turn
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+      x-traceability:
+        user-stories: [US-006, US-008]
+
+  /games/{gameId}/actions/declare-suit:
+    post:
+      tags: [actions]
+      summary: Declare a suit
+      description: |
+        Declare a suit after playing a wild card. This endpoint must be called
+        immediately after playing a wild card (as determined by active rules).
+        The LLM Judge validates the timing and context of the declaration.
+      operationId: declareSuit
+      parameters:
+        - $ref: '#/components/parameters/GameId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [playerId, suit]
+              properties:
+                playerId:
+                  type: string
+                  format: uuid
+                  description: Player declaring the suit
+                suit:
+                  type: string
+                  enum: [hearts, diamonds, clubs, spades]
+                  description: The suit being declared
+                  example: hearts
+      responses:
+        '200':
+          description: Suit declared successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  game:
+                    $ref: '#/components/schemas/Game'
+                  declaredSuit:
+                    type: string
+                    enum: [hearts, diamonds, clubs, spades]
+        '400':
+          description: Invalid suit declaration (no wild card played, wrong timing, etc.)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Not player's turn or not authorized to declare
           content:
             application/json:
               schema:
@@ -403,7 +461,7 @@ paths:
                   card:
                     $ref: '#/components/schemas/Card'
         '403':
-          description: Not player's turn or has playable cards
+          description: Not player's turn or draw not allowed by rules
           content:
             application/json:
               schema:

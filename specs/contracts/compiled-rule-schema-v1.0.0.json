@@ -46,11 +46,11 @@
             "properties": {
               "cardRank": {
                 "type": "string",
-                "enum": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
+                "enum": ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "red_joker", "black_joker"]
               },
               "cardSuit": {
                 "type": "string",
-                "enum": ["hearts", "diamonds", "clubs", "spades"]
+                "enum": ["hearts", "diamonds", "clubs", "spades", null]
               },
               "playerId": {
                 "type": "string",
@@ -89,6 +89,11 @@
               "game_state",
               "player_state",
               "card_state",
+              "card_match",
+              "suit_match",
+              "rank_match",
+              "wild_card",
+              "declared_suit",
               "timing",
               "chat_content",
               "action_sequence"
@@ -123,7 +128,12 @@
             "enum": [
               "require_speech",
               "require_action",
+              "require_suit_declaration",
+              "allow_card_play",
+              "require_draw",
               "modify_game_state",
+              "advance_turn",
+              "declare_winner",
               "send_notification",
               "log_event"
             ]
@@ -148,6 +158,17 @@
               "targetPlayer": {
                 "type": "string",
                 "description": "Player who must perform the action ('current', 'next', 'all', or player ID)"
+              },
+              "declaredSuit": {
+                "type": "string",
+                "description": "Suit to be declared (for wild card plays)",
+                "enum": ["hearts", "diamonds", "clubs", "spades"]
+              },
+              "cardCount": {
+                "type": "integer",
+                "description": "Number of cards to draw",
+                "minimum": 1,
+                "maximum": 10
               }
             }
           }

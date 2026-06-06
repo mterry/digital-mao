@@ -2,37 +2,39 @@
 
 ## Executive Summary
 
-The Digital Mao contract suite is **COMPLETE** and **APPROVED FOR IMPLEMENTATION**. All 16 contracts (consolidated from 17), 9 architectural diagrams, quality documentation, and coordination plans have been created and validated.
+The Digital Mao contract suite is **COMPLETE** and **APPROVED FOR IMPLEMENTATION**. All 17 contracts (8 JSON Schema, 2 OpenAPI, 3 AsyncAPI, 4 Components), 9 architectural diagrams, quality documentation, and coordination plans have been created and validated.
 
-**Status:** ✅ Ready for Build Phase  
-**Quality Gates:** 9/9 Passed  
-**User Story Coverage:** 93% (28/30 stories, 2 deferred)  
-**Created:** 2026-06-01  
+**Status:** ✅ Ready for Build Phase
+**Quality Gates:** 9/9 Passed
+**User Story Coverage:** 93% (28/30 stories, 2 deferred)
+**Created:** 2026-06-01
+**Last Updated:** 2026-06-06
 **Version:** 1.0.0
 
 ---
 
 ## Contract Inventory
 
-### JSON Schemas (7 files)
+### JSON Schemas (8 files)
 Data models with validation rules, examples, and diagram references.
 
 | Contract | Location | Purpose | Status |
 |----------|----------|---------|--------|
-| Card Schema | [`specs/contracts/card-schema-v1.0.0.json`](specs/contracts/card-schema-v1.0.0.json) | Playing card model with suit, rank, special effects | ✅ Complete |
+| Card Schema | [`specs/contracts/card-schema-v1.0.0.json`](specs/contracts/card-schema-v1.0.0.json) | Playing card model with suit, rank, Joker support (54 cards/deck) | ✅ Complete (Updated) |
 | Player Schema | [`specs/contracts/player-schema-v1.0.0.json`](specs/contracts/player-schema-v1.0.0.json) | Player state including hand, statistics, connection | ✅ Complete |
 | Chat Message Schema | [`specs/contracts/chat-message-schema-v1.0.0.json`](specs/contracts/chat-message-schema-v1.0.0.json) | Chat messages with types (player, system, judge, penalty) | ✅ Complete |
 | Rule Schema | [`specs/contracts/rule-schema-v1.0.0.json`](specs/contracts/rule-schema-v1.0.0.json) | Natural language rule proposals with lifecycle | ✅ Complete |
-| Compiled Rule Schema | [`specs/contracts/compiled-rule-schema-v1.0.0.json`](specs/contracts/compiled-rule-schema-v1.0.0.json) | Machine-executable rules with triggers, conditions, actions | ✅ Complete |
+| Compiled Rule Schema | [`specs/contracts/compiled-rule-schema-v1.0.0.json`](specs/contracts/compiled-rule-schema-v1.0.0.json) | Machine-executable rules with suit/rank matching, wild cards, draw actions | ✅ Complete (Updated) |
 | Enforcement Case Schema | [`specs/contracts/enforcement-case-schema-v1.0.0.json`](specs/contracts/enforcement-case-schema-v1.0.0.json) | Rule enforcement decisions with LLM metadata | ✅ Complete |
-| Game State Schema | [`specs/contracts/game-state-schema-v1.0.0.json`](specs/contracts/game-state-schema-v1.0.0.json) | Complete game state including players, deck, rules | ✅ Complete |
+| Game State Schema | [`specs/contracts/game-state-schema-v1.0.0.json`](specs/contracts/game-state-schema-v1.0.0.json) | Complete game state with multi-deck support (1-8 decks) | ✅ Complete (Updated) |
+| Initial Rules Schema | [`specs/contracts/initial-rules-v1.0.0.json`](specs/contracts/initial-rules-v1.0.0.json) | First round ruleset in natural language for LLM compilation | ✅ Complete (NEW) |
 
 ### OpenAPI Specifications (2 files)
 REST API contracts with request/response schemas, security, and examples.
 
 | Contract | Location | Purpose | Status |
 |----------|----------|---------|--------|
-| Game Server API | [`specs/contracts/game-server-api-v1.0.0.yaml`](specs/contracts/game-server-api-v1.0.0.yaml) | Unified API for game management, rule management, and player actions | ✅ Complete |
+| Game Server API | [`specs/contracts/game-server-api-v1.0.0.yaml`](specs/contracts/game-server-api-v1.0.0.yaml) | Unified API with declare-suit endpoint, rules-based validation | ✅ Complete (Updated) |
 | LLM Judge API | [`specs/contracts/llm-judge-api-v1.0.0.yaml`](specs/contracts/llm-judge-api-v1.0.0.yaml) | Internal API for rule compilation and action evaluation | ✅ Complete |
 
 **Note:** The Game Server API consolidates the previous Game Management API and Rule Management API into a single unified contract, aligning with the C4 Container architecture showing a unified Game Server (Node.js/Express + Socket.io).
@@ -99,6 +101,7 @@ Interactive HTML diagrams with zoom, pan, and search capabilities.
 
 **Coverage Summary:**
 - Total User Stories: 30
+- Total Contracts: 17 (8 JSON Schema, 2 OpenAPI, 3 AsyncAPI, 4 Components)
 - Stories with Coverage: 28 (93%)
 - Stories Deferred: 2 (US-028, US-030)
 - MVP Coverage: 16/16 (100%)
@@ -164,6 +167,60 @@ Interactive HTML diagrams with zoom, pan, and search capabilities.
 5. Performance Tests (Artillery)
 6. Security Tests (OWASP ZAP, Snyk)
 7. Accessibility Tests (axe-core)
+
+---
+
+## Recent Updates (2026-06-06)
+
+### Multi-Deck Support & Rules-Based Validation
+
+**Critical Design Changes Implemented:**
+
+1. **Multi-Deck Support (1-8 decks of 54 cards each)**
+   - Added Joker support to [`card-schema-v1.0.0.json`](specs/contracts/card-schema-v1.0.0.json)
+     - New ranks: `red_joker`, `black_joker`
+     - Suit can be `null` for Jokers
+     - Added `deckNumber` field (1-8) to track which physical deck
+   - Updated [`game-state-schema-v1.0.0.json`](specs/contracts/game-state-schema-v1.0.0.json)
+     - Added `deckCount` setting (1-8 decks)
+     - Increased deck.count maximum to 432 (8 decks × 54 cards)
+     - Added `declaredSuit` field for wild card declarations
+     - Removed `currentSuit` field (replaced by `declaredSuit`)
+
+2. **Rules-Based Validation (Removed Hardcoded Logic)**
+   - Removed from [`card-schema-v1.0.0.json`](specs/contracts/card-schema-v1.0.0.json):
+     - `isSpecial` field (hardcoded special card flag)
+     - `specialEffect` field (hardcoded effect types)
+   - Updated [`game-server-api-v1.0.0.yaml`](specs/contracts/game-server-api-v1.0.0.yaml):
+     - Added `POST /games/{gameId}/actions/declare-suit` endpoint
+     - Removed `selectedSuit` from play-card endpoint
+     - All validation now delegated to LLM Judge Service
+     - No hardcoded card matching logic
+
+3. **Initial Rules Contract (NEW)**
+   - Created [`initial-rules-v1.0.0.json`](specs/contracts/initial-rules-v1.0.0.json)
+   - Defines first round ruleset in natural language:
+     - INIT-001: Card matching rule (rank OR suit)
+     - INIT-002: Wild card rule (rank '8' with suit declaration)
+     - INIT-003: Draw rule (draw if no valid play)
+     - INIT-004: Win condition (first to empty hand)
+     - INIT-005: Turn order (clockwise)
+   - Rules compiled by LLM Judge at game initialization
+   - Game pattern name never mentioned in contracts
+
+4. **Enhanced Compiled Rule Schema**
+   - Updated [`compiled-rule-schema-v1.0.0.json`](specs/contracts/compiled-rule-schema-v1.0.0.json)
+   - New condition types: `card_match`, `suit_match`, `rank_match`, `wild_card`, `declared_suit`
+   - New action types: `require_suit_declaration`, `allow_card_play`, `require_draw`, `advance_turn`, `declare_winner`
+   - Support for Joker ranks in trigger parameters
+
+**Design Principles Enforced:**
+- ✅ All card behavior is rules-based (no hardcoded special effects)
+- ✅ Multi-deck support with configurable deck count
+- ✅ Initial rules expressed in natural language for LLM compilation
+- ✅ Game pattern name never mentioned in contracts or documentation
+- ✅ Suit declarations handled through dedicated endpoint
+- ✅ All validation delegated to rules engine
 
 ---
 
@@ -299,17 +356,19 @@ All contract creation patterns, quality gates, and coordination strategies have 
 
 **Contract Suite Status:** ✅ APPROVED FOR IMPLEMENTATION
 
-**Approved By:** Solutions Architect Mode  
-**Approval Date:** 2026-06-01  
+**Approved By:** Solutions Architect Mode
+**Approval Date:** 2026-06-01
+**Last Updated:** 2026-06-06
 **Version:** 1.0.0
 
 **Quality Assurance:**
-- All 16 contracts complete and validated (consolidated from 17)
+- All 17 contracts complete and validated (8 JSON Schema, 2 OpenAPI, 3 AsyncAPI, 4 Components)
 - All 9 diagrams created and rendered
 - All quality gates passed
 - Traceability matrix shows 93% coverage
 - Build and test plans ready
 - Architecture aligned with C4 Container diagram (unified Game Server)
+- Multi-deck support and rules-based validation implemented
 
 **Ready for:**
 - Infrastructure setup
@@ -340,6 +399,13 @@ All contract creation patterns, quality gates, and coordination strategies have 
 
 ---
 
-**Document Version:** 1.0.0  
-**Last Updated:** 2026-06-01  
+**Document Version:** 1.0.0
+**Last Updated:** 2026-06-06
 **Status:** ✅ COMPLETE - READY FOR BUILD PHASE
+
+**Recent Changes:**
+- Added multi-deck support (1-8 decks of 54 cards)
+- Removed hardcoded special effects from card schema
+- Added initial rules contract for first round
+- Enhanced compiled rule schema for rules-based validation
+- Added declare-suit endpoint to game server API

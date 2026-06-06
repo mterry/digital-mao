@@ -7,7 +7,7 @@ This matrix ensures 100% coverage of user stories by contracts. Every user story
 
 ### Total Coverage
 - **User Stories:** 30 total
-- **Contracts:** 16 total (7 JSON Schema, 2 OpenAPI, 3 AsyncAPI, 4 Components)
+- **Contracts:** 17 total (8 JSON Schema, 2 OpenAPI, 3 AsyncAPI, 4 Components)
 - **Coverage:** 93% (28/30 stories covered, 2 deferred to future releases)
 
 ### By Release
@@ -56,17 +56,18 @@ This matrix ensures 100% coverage of user stories by contracts. Every user story
 
 ## Contract to User Story Mapping
 
-### JSON Schemas (7)
-- **card-schema-v1.0.0.json**: US-005, US-006, US-008
+### JSON Schemas (8)
+- **card-schema-v1.0.0.json**: US-005, US-006, US-008 (Updated: Added Joker support, removed hardcoded special effects)
 - **player-schema-v1.0.0.json**: US-003, US-005, US-009, US-010, US-014, US-016, US-024
 - **chat-message-schema-v1.0.0.json**: US-011, US-012, US-013
 - **rule-schema-v1.0.0.json**: US-016, US-017, US-020
-- **compiled-rule-schema-v1.0.0.json**: US-018, US-021
+- **compiled-rule-schema-v1.0.0.json**: US-018, US-021 (Updated: Added support for suit/rank matching, wild cards, draw actions)
 - **enforcement-case-schema-v1.0.0.json**: US-009, US-014, US-021, US-022, US-023
-- **game-state-schema-v1.0.0.json**: US-001, US-002, US-005, US-015, US-025, US-029
+- **game-state-schema-v1.0.0.json**: US-001, US-002, US-005, US-015, US-025, US-029 (Updated: Added deckCount, declaredSuit; removed currentSuit)
+- **initial-rules-v1.0.0.json**: US-004, US-006, US-007, US-008, US-010 (NEW: Defines first round ruleset in natural language)
 
 ### OpenAPI Specifications (2)
-- **game-server-api-v1.0.0.yaml**: US-001, US-002, US-003, US-004, US-006, US-007, US-017, US-018, US-019, US-020, US-023, US-026
+- **game-server-api-v1.0.0.yaml**: US-001, US-002, US-003, US-004, US-006, US-007, US-017, US-018, US-019, US-020, US-023, US-026 (Updated: Added declare-suit endpoint, removed hardcoded validation)
 - **llm-judge-api-v1.0.0.yaml**: US-009, US-017, US-021, US-022, US-023
 
 ### AsyncAPI Specifications (3)
@@ -100,7 +101,24 @@ Two low-priority stories deferred to future releases:
 
 ---
 
-**Version:** 1.0.0  
-**Last Updated:** 2026-06-01  
-**Status:** ✅ Complete - Ready for Implementation  
+## Recent Changes (v1.0.0 Update)
+
+### Multi-Deck Support & Rules-Based Validation
+- **card-schema-v1.0.0.json**: Added Joker support (red_joker, black_joker), added deckNumber field, removed hardcoded isSpecial and specialEffect fields
+- **game-state-schema-v1.0.0.json**: Added deckCount setting (1-8 decks), added declaredSuit field, removed currentSuit field, increased deck.count maximum to 432
+- **initial-rules-v1.0.0.json**: NEW contract defining first round rules in natural language (card matching, wild cards, draw rules, win conditions, turn order)
+- **compiled-rule-schema-v1.0.0.json**: Added support for card_match, suit_match, rank_match, wild_card, declared_suit conditions; added require_suit_declaration, allow_card_play, require_draw, advance_turn, declare_winner actions
+- **game-server-api-v1.0.0.yaml**: Added POST /games/{gameId}/actions/declare-suit endpoint, removed hardcoded validation references, all validation now delegated to LLM Judge
+
+### Design Principles Enforced
+- ✅ All card behavior is now rules-based (no hardcoded special effects)
+- ✅ Multi-deck support (1-8 decks of 54 cards each)
+- ✅ Initial rules expressed in natural language for LLM compilation
+- ✅ Game pattern name never mentioned in contracts or documentation
+
+---
+
+**Version:** 1.0.0
+**Last Updated:** 2026-06-06
+**Status:** ✅ Complete - Ready for Implementation
 **Coverage:** 93% (28/30 user stories)
